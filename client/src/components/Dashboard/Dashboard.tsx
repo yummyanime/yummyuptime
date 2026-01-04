@@ -276,7 +276,7 @@ const Dashboard = () => {
 
     if (!domain) {
         return (
-            <div className={styles.dashboard}>
+            <div className={styles.dashboard}  style={{ marginBottom: "140px" }}>
                 <div className={styles.header}>
                     <div className={styles.controls}>
                         <ButtonGroup

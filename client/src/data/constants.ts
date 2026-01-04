@@ -54,7 +54,6 @@ export const cityTranslations: { [key: string]: string } = {
     Tbilisi: "Тбилиси",
     Yerevan: "Ереван",
     Novosibirsk: "Новосибирск",
-    Karagandy: "Караганда",
     Aktau: "Актау",
 };
 

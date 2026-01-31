@@ -25,18 +25,19 @@ export const createHttpTable = async () => {
       dns_time FLOAT,
       tls_time FLOAT,
       tcp_time FLOAT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      error_message TEXT
     );
   `;
         await pool.query(httpLogsQuery);
         console.log('Table "http_logs" created or already exists.');
 
-        // Drop ip_address column if it exists
+        // Add error_message column if it doesn't exist
         try {
-            await pool.query('ALTER TABLE http_logs DROP COLUMN IF EXISTS ip_address;');
-            console.log('Column "ip_address" dropped if it existed.');
+            await pool.query('ALTER TABLE http_logs ADD COLUMN IF NOT EXISTS error_message TEXT;');
+            console.log('Column "error_message" added or already exists.');
         } catch (err) {
-            console.error('Error dropping ip_address column:', err);
+            console.error('Error adding error_message column:', err);
         }
 
         const hourlyLogsQuery = `

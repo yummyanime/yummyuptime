@@ -174,8 +174,20 @@ const Dashboard = () => {
                     const cityLogs = cityLogsMap[city];
                     let lastValidLog: Log | null = null;
 
-                    const processedLogs = cityLogs.map((log) => {
-                        const isUnreliable = (log.total_time ?? 0) >= 2000;
+                    const processedLogs = cityLogs.map((log, i) => {
+                        const isHighPing = (log.total_time ?? 0) >= 2500;
+                        let isUnreliable = false;
+
+                        if (isHighPing) {
+                            const prev = cityLogs[i - 1];
+                            const next = cityLogs[i + 1];
+                            const isPrevHigh = (prev?.total_time ?? 0) >= 2500;
+                            const isNextHigh = (next?.total_time ?? 0) >= 2500;
+
+                            if (!isPrevHigh && !isNextHigh) {
+                                isUnreliable = true;
+                            }
+                        }
 
                         if (isUnreliable) {
                             if (lastValidLog) {
@@ -191,7 +203,7 @@ const Dashboard = () => {
                                 };
                             } else {
                                 const firstValid = cityLogs.find(
-                                    (l) => (l.total_time ?? 0) < 2000
+                                    (l) => (l.total_time ?? 0) < 2500
                                 );
                                 if (firstValid) {
                                     return {
@@ -206,7 +218,7 @@ const Dashboard = () => {
                                     };
                                 }
                             }
-                        } else {
+                        } else if (!isHighPing) {
                             lastValidLog = log;
                         }
                         return log;

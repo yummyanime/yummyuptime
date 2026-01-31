@@ -175,7 +175,7 @@ const checkAndSaveDomain = async (domain, locations) => {
         // Step 2 & 3: Poll for the measurement result until it's finished
         let resultData;
         const startTime = Date.now();
-        const timeout = 60000; // 60 seconds timeout
+        const timeout = 120000; // 120 seconds timeout
 
         while (Date.now() - startTime < timeout) {
             const getResultResponse = await fetch(
@@ -204,7 +204,7 @@ const checkAndSaveDomain = async (domain, locations) => {
         }
 
         if (!resultData || resultData.status !== "finished") {
-            throw new Error(`Measurement ${id} for ${target} did not complete in time.`);
+            throw new Error(`Measurement ${id} for ${target} did not complete in 120s.`);
         }
 
         const resultsByLocation = new Map(
@@ -235,12 +235,12 @@ const checkAndSaveDomain = async (domain, locations) => {
                     probe.asn,
                     probe.network,
                     httpResult.statusCode,
-                    httpResult.timings.total || null,
-                    httpResult.timings.download || null,
-                    httpResult.timings.firstByte || null,
-                    httpResult.timings.dns || null,
-                    httpResult.timings.tls || null,
-                    httpResult.timings.tcp || null,
+                    Math.min(httpResult.timings.total || 9999, 9999),
+                    Math.min(httpResult.timings.download || 9999, 9999),
+                    Math.min(httpResult.timings.firstByte || 9999, 9999),
+                    Math.min(httpResult.timings.dns || 9999, 9999),
+                    Math.min(httpResult.timings.tls || 9999, 9999),
+                    Math.min(httpResult.timings.tcp || 9999, 9999),
                     null,
                 ];
             } else {
@@ -260,12 +260,12 @@ const checkAndSaveDomain = async (domain, locations) => {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    9999,
+                    9999,
+                    9999,
+                    9999,
+                    9999,
+                    9999,
                     failureReason,
                 ];
             }
@@ -300,12 +300,12 @@ const checkAndSaveDomain = async (domain, locations) => {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                9999,
+                9999,
+                9999,
+                9999,
+                9999,
+                9999,
                 err.message,
             ]);
         }

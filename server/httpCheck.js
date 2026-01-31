@@ -145,8 +145,8 @@ const checkAndSaveDomain = async (domain, locations) => {
                 for (const location of locations) {
                     const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time, error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
                     await pool.query(query, [
                         "api_limit",
@@ -162,6 +162,7 @@ const checkAndSaveDomain = async (domain, locations) => {
                         null,
                         null,
                         null,
+                        "API Rate Limit Exceeded",
                     ]);
                 }
             }
@@ -240,16 +241,16 @@ const checkAndSaveDomain = async (domain, locations) => {
                     httpResult.timings.dns || null,
                     httpResult.timings.tls || null,
                     httpResult.timings.tcp || null,
+                    null,
                 ];
             } else {
+                const failureReason = result
+                    ? result.result.status.toUpperCase()
+                    : "UNKNOWN";
                 console.log(
                     `[FAILURE] HTTP check to ${location.city}, ${
                         location.country
-                    } for ${target}: Status ${
-                        result
-                            ? result.result.status.toUpperCase()
-                            : "UNKNOWN"
-                    }`
+                    } for ${target}: Status ${failureReason}`
                 );
                 values = [
                     id,
@@ -265,13 +266,14 @@ const checkAndSaveDomain = async (domain, locations) => {
                     null,
                     null,
                     null,
+                    failureReason,
                 ];
             }
 
             const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time, error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
 
             await pool.query(query, values);
@@ -287,8 +289,8 @@ const checkAndSaveDomain = async (domain, locations) => {
         for (const location of locations) {
             const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time, error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
             await pool.query(query, [
                 "failed",
@@ -304,6 +306,7 @@ const checkAndSaveDomain = async (domain, locations) => {
                 null,
                 null,
                 null,
+                err.message,
             ]);
         }
     }

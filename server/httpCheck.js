@@ -142,12 +142,12 @@ const checkAndSaveDomain = async (domain, locations) => {
             console.error(
                 `Failed to create measurement for ${target}: ${createMeasurementResponse.status} ${createMeasurementResponse.statusText}. Body: ${errorBody}`
             );
-            if (createMeasurementResponse.status === 429) {
+                if (createMeasurementResponse.status === 429) {
                 for (const location of locations) {
                     const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, ip_address, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
                     await pool.query(query, [
                         "api_limit",
@@ -156,8 +156,8 @@ const checkAndSaveDomain = async (domain, locations) => {
                         location.city,
                         null,
                         null,
-                        429,
                         null,
+                        429,
                         null,
                         null,
                         null,
@@ -233,6 +233,7 @@ const checkAndSaveDomain = async (domain, locations) => {
                     probe.city,
                     probe.asn,
                     probe.network,
+                    probe.ip,
                     httpResult.statusCode,
                     httpResult.timings.total || null,
                     httpResult.timings.download || null,
@@ -265,13 +266,14 @@ const checkAndSaveDomain = async (domain, locations) => {
                     null,
                     null,
                     null,
+                    null,
                 ];
             }
 
             const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, ip_address, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
 
             await pool.query(query, values);
@@ -284,11 +286,11 @@ const checkAndSaveDomain = async (domain, locations) => {
             `Failed to complete HTTP measurement cycle for ${target}:`,
             err.message
         );
-        for (const location of locations) {
+                for (const location of locations) {
             const query = `
       INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        probe_id, domain, country, city, asn, network, ip_address, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `;
             await pool.query(query, [
                 "failed",

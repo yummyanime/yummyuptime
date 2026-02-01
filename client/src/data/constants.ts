@@ -22,7 +22,7 @@ export const domains = [
     "site.yummyani.me",
     "site.yummy-ani.me",
     "ru.yummyani.me",
-    "socket1.yummyani.me",
+    "en.yummyani.me",
 ];
 
 export const cityTranslations: { [key: string]: string } = {

@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 const domains = [
     { name: "site.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
     { name: "ru.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
-    { name: "socket1.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
+    { name: "en.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
     { name: "site.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY4" },
 ];
 
@@ -321,7 +321,8 @@ export const httpCheckAndSave = async (locations) => {
     console.log(
         `--- Starting HTTP check cycle at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
     );
-    await Promise.all(
-        domains.map((domain) => checkAndSaveDomain(domain, locations))
-    );
+    for (const domain of domains) {
+        await checkAndSaveDomain(domain, locations);
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
 };

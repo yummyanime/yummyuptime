@@ -13,6 +13,7 @@ services:
             - GLOBALPING_API_KEY2=${GLOBALPING_API_KEY2}
             - GLOBALPING_API_KEY3=${GLOBALPING_API_KEY3}
             - GLOBALPING_API_KEY4=${GLOBALPING_API_KEY4}
+            - GLOBALPING_SECRET_KEY=${GLOBALPING_SECRET_KEY}
         restart: always
 
     db:

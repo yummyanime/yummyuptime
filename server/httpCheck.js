@@ -100,6 +100,7 @@ export const aggregateHourlyData = async () => {
 const checkAndSaveDomain = async (domain, locations) => {
     const target = domain.name;
     const apiKey = process.env[domain.apiKeyEnv];
+    const secretKey = process.env.GLOBALPING_SECRET_KEY;
 
     if (!apiKey) {
         console.error(`${domain.apiKeyEnv} is not set.`);
@@ -128,6 +129,13 @@ const checkAndSaveDomain = async (domain, locations) => {
                 type: "http",
                 measurementOptions: {
                     protocol: "HTTPS",
+                    ...(secretKey && {
+                        request: {
+                            headers: {
+                                "X-Secret-Key": secretKey,
+                            },
+                        },
+                    }),
                 },
             }),
         };

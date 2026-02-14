@@ -389,7 +389,7 @@ const Dashboard = () => {
                         />
                     </div>
                 </div>
-                <Status allLogs={allLogs} loading={loading} />
+                <Status allLogs={allLogs} loading={loading} timeRange={timeRange} />
                 <div className={styles.chartsGrid}>
                     {loading
                         ? Array.from({ length: domains.length }).map(
@@ -445,7 +445,7 @@ const Dashboard = () => {
                     />
                 </div>
             </div>
-            <Status allLogs={allLogs} domain={domain} loading={loading} />
+            <Status allLogs={allLogs} domain={domain} loading={loading} timeRange={timeRange} />
             {loading ? (
                 <div className={styles.chartsGrid}>
                     {Array.from({ length: 4 }).map((_, index) => (

@@ -20,6 +20,7 @@ interface GroupedLog {
 interface DomainStatusProps {
     domain: string;
     logs: GroupedLog[];
+    timeRange?: string;
 }
 
 const getStatusColor = (log: GroupedLog) => {
@@ -62,7 +63,7 @@ const getStatusColor = (log: GroupedLog) => {
     return styles.green;
 };
 
-const DomainStatus: React.FC<DomainStatusProps> = ({ domain, logs }) => {
+const DomainStatus: React.FC<DomainStatusProps> = ({ domain, logs, timeRange }) => {
     const requestsRef = useRef<HTMLDivElement>(null);
     const width = useResize(requestsRef);
 
@@ -83,9 +84,10 @@ const DomainStatus: React.FC<DomainStatusProps> = ({ domain, logs }) => {
                             <div>
                                 <div>
                                     Время:{" "}
-                                    {new Date(
-                                        log.created_at
-                                    ).toLocaleTimeString([], {
+                                    {new Date(log.created_at).toLocaleString("ru-RU", {
+                                        ...(timeRange === "week" || timeRange === "month"
+                                            ? { day: "2-digit", month: "2-digit" }
+                                            : {}),
                                         hour: "2-digit",
                                         minute: "2-digit",
                                     })}

@@ -32,9 +32,10 @@ interface StatusProps {
     domain?: string;
     allLogs: Log[];
     loading: boolean;
+    timeRange?: string;
 }
 
-const Status: React.FC<StatusProps> = ({ domain, allLogs, loading }) => {
+const Status: React.FC<StatusProps> = ({ domain, allLogs, loading, timeRange }) => {
     const [domainLogs, setDomainLogs] = useState<DomainLogs>({});
 
     useEffect(() => {
@@ -115,6 +116,7 @@ const Status: React.FC<StatusProps> = ({ domain, allLogs, loading }) => {
                                 key={d}
                                 domain={d}
                                 logs={domainLogs[d] || []}
+                                timeRange={timeRange}
                             />
                         )
                 )}

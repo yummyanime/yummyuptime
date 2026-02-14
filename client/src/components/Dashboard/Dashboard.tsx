@@ -395,8 +395,10 @@ const Dashboard = () => {
                         ? Array.from({ length: domains.length }).map(
                               (_, index) => <CountryChartPlug key={index} />
                           )
-                        : Object.entries(domainLogs)
-                              .map(([domain, cityLogs]) => (
+                        : domains.map((domain) => {
+                              const cityLogs = domainLogs[domain];
+                              if (!cityLogs) return null;
+                              return (
                                   <div
                                       key={domain}
                                       className={styles.countryChart}
@@ -418,7 +420,8 @@ const Dashboard = () => {
                                           />
                                       </div>
                                   </div>
-                              ))}
+                              );
+                          })}
                 </div>
             </div>
         );

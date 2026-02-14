@@ -107,6 +107,8 @@ const Dashboard = () => {
             let domainLogsData: { [domain: string]: CityLogs } = {};
             let rawLogs: Log[] = [];
 
+            const pingsByCountryAndTime = new Map<string, Map<string, Log[]>>();
+
             if (domain) {
                 const [logsResponse, locationsResponse] = await Promise.all([
                     fetch(`/http-logs?timeRange=${timeRange}&domain=${domain}`),
@@ -139,6 +141,23 @@ const Dashboard = () => {
                         )
                 );
 
+                rawLogs.forEach(log => {
+                    if (log.country && log.created_at) {
+                        const countryKey = log.country;
+                        const timeKey = log.created_at;
+
+                        if (!pingsByCountryAndTime.has(countryKey)) {
+                            pingsByCountryAndTime.set(countryKey, new Map<string, Log[]>());
+                        }
+                        const timeMap = pingsByCountryAndTime.get(countryKey)!;
+
+                        if (!timeMap.has(timeKey)) {
+                            timeMap.set(timeKey, []);
+                        }
+                        timeMap.get(timeKey)!.push(log);
+                    }
+                });
+
                 const processedLogsData: CountryLogs = {};
                 for (const countryKey in logsData) {
                     processedLogsData[countryKey] = trimCityLogsByTimeRange(logsData[countryKey]);
@@ -157,6 +176,23 @@ const Dashboard = () => {
                 }
                 const data: Log[] = await response.json();
                 rawLogs = data;
+
+                rawLogs.forEach(log => {
+                    if (log.country && log.created_at) {
+                        const countryKey = log.country;
+                        const timeKey = log.created_at;
+
+                        if (!pingsByCountryAndTime.has(countryKey)) {
+                            pingsByCountryAndTime.set(countryKey, new Map<string, Log[]>());
+                        }
+                        const timeMap = pingsByCountryAndTime.get(countryKey)!;
+
+                        if (!timeMap.has(timeKey)) {
+                            timeMap.set(timeKey, []);
+                        }
+                        timeMap.get(timeKey)!.push(log);
+                    }
+                });
 
                 const filteredData = data.filter(
                     (log) =>
@@ -186,7 +222,7 @@ const Dashboard = () => {
                     domainLogsData[domainKey] = trimCityLogsByTimeRange(logsForDomain);
                 }
             }
-            const processCityLogs = (cityLogsMap: CityLogs): CityLogs => {
+             const processCityLogs = (cityLogsMap: CityLogs, allPingsByCountryAndTime: Map<string, Map<string, Log[]>>): CityLogs => {
                 const filteredLogs: CityLogs = {};
                 for (const city in cityLogsMap) {
                     const cityLogs = cityLogsMap[city];
@@ -204,6 +240,20 @@ const Dashboard = () => {
 
                             if (!isPrevHigh && !isNextHigh) {
                                 isUnreliable = true;
+                            }
+
+                            if (!isUnreliable && log.country && log.created_at) {
+                                const pingsAtSameTime = allPingsByCountryAndTime.get(log.country)?.get(log.created_at);
+
+                                if (pingsAtSameTime) {
+                                    const otherCitiesHaveGoodPing = pingsAtSameTime.some(
+                                        (p) => p.city !== log.city && (p.total_time ?? 0) < 2500
+                                    );
+
+                                    if (otherCitiesHaveGoodPing) {
+                                        isUnreliable = true;
+                                    }
+                                }
                             }
                         }
 
@@ -252,7 +302,8 @@ const Dashboard = () => {
                     const filteredCountryLogs: CountryLogs = {};
                     for (const country in logsData) {
                         filteredCountryLogs[country] = processCityLogs(
-                            logsData[country]
+                            logsData[country],
+                            pingsByCountryAndTime
                         );
                     }
                     setHttpLogs(filteredCountryLogs);
@@ -260,7 +311,8 @@ const Dashboard = () => {
                     const filteredDomainLogs: { [domain: string]: CityLogs } = {};
                     for (const domainKey in domainLogsData) {
                         filteredDomainLogs[domainKey] = processCityLogs(
-                            domainLogsData[domainKey]
+                            domainLogsData[domainKey],
+                            pingsByCountryAndTime
                         );
                     }
                     setDomainLogs(filteredDomainLogs);

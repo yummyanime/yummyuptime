@@ -181,7 +181,7 @@ const checkAndSaveDomain = async (domain, locations) => {
 
         let resultData;
         const startTime = Date.now();
-        const timeout = 6000;
+        const timeout = 60000;
 
         while (Date.now() - startTime < timeout) {
             const getResultResponse = await fetch(

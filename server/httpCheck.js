@@ -1,5 +1,5 @@
 import pool from "./db.js";
-import fetch from "node-fetch";
+import { io } from "socket.io-client";
 
 const domains = [
     { name: "site.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
@@ -22,10 +22,10 @@ export const locationGroups = {
     ],
     "6min": [
         { country: "DE", city: "Berlin" },
-        { country: "DE", city: "Dusseldorf" }, 
+        { country: "DE", city: "Dusseldorf" },
         { country: "KG", city: "Bishkek" },
-        { country: "PL", city: "Warsaw" }, 
-        { country: "PL", city: "Krakow" }, 
+        { country: "PL", city: "Warsaw" },
+        { country: "PL", city: "Krakow" },
         { country: "LV", city: "Riga" },
         { country: "LT", city: "Vilnius" },
         { country: "LT", city: "Siauliai" },
@@ -96,37 +96,51 @@ export const aggregateHourlyData = async () => {
     }
 };
 
-// Функция для выполнения проверки HTTP и сохранения результатов для одного домена
-const checkAndSaveDomain = async (domain, locations) => {
-    const target = domain.name;
-    const apiKey = process.env[domain.apiKeyEnv];
-    const secretKey = process.env.GLOBALPING_SECRET_KEY;
+// Хелпер для сохранения результата в БД
+const saveResultToDb = async (id, target, country, city, asn, network, statusCode, totalTime, downloadTime, firstByteTime, dnsTime, tlsTime, tcpTime) => {
+    const query = `
+      INSERT INTO http_logs (
+        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `;
+    const values = [
+        id, target, country, city, asn, network, statusCode,
+        totalTime !== null ? Math.min(totalTime, 4000) : 4000,
+        downloadTime, firstByteTime, dnsTime, tlsTime, tcpTime
+    ];
+    await pool.query(query, values);
+};
 
-    if (!apiKey) {
-        console.error(`${domain.apiKeyEnv} is not set.`);
-        return;
-    }
+// Функция для выполнения проверки через WebSocket
+const checkAndSaveDomainWS = (domain, locations) => {
+    return new Promise((resolve) => {
+        const target = domain.name;
+        const apiKey = process.env[domain.apiKeyEnv];
+        const secretKey = process.env.GLOBALPING_SECRET_KEY;
 
-    if (!target) {
-        console.error("Target is not defined");
-        return;
-    }
+        if (!apiKey) {
+            console.error(`${domain.apiKeyEnv} is not set.`);
+            return resolve();
+        }
 
-    try {
-        // Step 1: Create the measurement
-        const requestOptions = {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
+        const socket = io("https://api.globalping.io", {
+            transports: ["websocket"],
+            auth: { token: apiKey }
+        });
+
+        let measurementId = null;
+        const locationsMap = new Map(locations.map(l => [`${l.city}-${l.country}`, l]));
+        const resultsReceived = new Set();
+
+        socket.on("connect", () => {
+            console.log(`[WS] Connected to Globalping for ${target}`);
+            socket.emit("measurement:create", {
                 target: target,
+                type: "http",
                 locations: locations.map((location) => ({
                     ...location,
                     limit: 1,
                 })),
-                type: "http",
                 measurementOptions: {
                     protocol: "HTTPS",
                     ...(secretKey && {
@@ -137,194 +151,78 @@ const checkAndSaveDomain = async (domain, locations) => {
                         },
                     }),
                 },
-            }),
-        };
-        const createMeasurementResponse = await fetch(
-            "https://api.globalping.io/v1/measurements",
-            requestOptions
-        );
+            });
+        });
 
-        if (!createMeasurementResponse.ok) {
-            const errorBody = await createMeasurementResponse.text();
-            console.error(
-                `Failed to create measurement for ${target}: ${createMeasurementResponse.status} ${createMeasurementResponse.statusText}. Body: ${errorBody}`
-            );
-                if (createMeasurementResponse.status === 429) {
-                for (const location of locations) {
-                    const query = `
-      INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `;
-                    await pool.query(query, [
-                        "api_limit",
-                        target,
-                        location.country,
-                        location.city,
-                        null,
-                        null,
-                        429,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                    ]);
-                }
-            }
-            return;
-        }
+        socket.on("connect_error", (err) => {
+            console.error(`[WS] Connection error for ${target}:`, err.message);
+            socket.disconnect();
+            resolve();
+        });
 
-        const { id } = await createMeasurementResponse.json();
-        console.log(`[HTTP] Measurement created for ${target} with ID: ${id}`);
+        socket.on("measurement:created", (data) => {
+            measurementId = data.id;
+            console.log(`[WS] Measurement created for ${target} with ID: ${measurementId}`);
+        });
 
-        let resultData;
-        const startTime = Date.now();
-        const timeout = 60000;
+        socket.on("measurement:result", async (data) => {
+            if (data.id !== measurementId) return;
 
-        while (Date.now() - startTime < timeout) {
-            const getResultResponse = await fetch(
-                `https://api.globalping.io/v1/measurements/${id}`
-            );
+            const { probe, result: httpResult } = data.result;
+            const locationKey = `${probe.city}-${probe.country}`;
+            resultsReceived.add(locationKey);
 
-            if (!getResultResponse.ok) {
-                if (getResultResponse.status >= 500) {
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, 2000)
-                    );
-                    continue;
-                }
-                throw new Error(
-                    `HTTP error! status: ${getResultResponse.status}`
+            if (httpResult.status === "finished") {
+                console.log(`[WS SUCCESS] ${probe.city}, ${probe.country} for ${target}: Status ${httpResult.statusCode}`);
+                await saveResultToDb(
+                    measurementId, target, probe.country, probe.city, probe.asn, probe.network,
+                    httpResult.statusCode, httpResult.timings.total, httpResult.timings.download,
+                    httpResult.timings.firstByte, httpResult.timings.dns, httpResult.timings.tls, httpResult.timings.tcp
                 );
-            }
-
-            resultData = await getResultResponse.json();
-
-            if (resultData.status === "finished") {
-                break;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-
-        if (!resultData || resultData.status !== "finished") {
-            throw new Error(`Measurement ${id} for ${target} did not complete in 120s.`);
-        }
-
-        const resultsByLocation = new Map(
-            resultData.results.map((r) => [
-                `${r.probe.city}-${r.probe.country}`,
-                r,
-            ])
-        );
-
-        for (const location of locations) {
-            const result = resultsByLocation.get(
-                `${location.city}-${location.country}`
-            );
-            let values;
-
-            if (result && result.result.status === "finished") {
-                const { probe, result: httpResult } = result;
-                
-                console.log(
-                    `[SUCCESS] HTTP check to ${probe.city}, ${probe.country} for ${target}: Status ${httpResult.statusCode}. ASN: ${probe.asn}, Network: ${probe.network}`
-                );
-
-                values = [
-                    id,
-                    target,
-                    probe.country,
-                    probe.city,
-                    probe.asn,
-                    probe.network,
-                    httpResult.statusCode,
-                    Math.min(httpResult.timings.total || 4000, 4000),
-                    httpResult.timings.download || null,
-                    httpResult.timings.firstByte || null,
-                    httpResult.timings.dns || null,
-                    httpResult.timings.tls || null,
-                    httpResult.timings.tcp || null,
-                ];
             } else {
-                const failureReason = result
-                    ? result.result.status.toUpperCase()
-                    : "UNKNOWN";
-                
-                // Get ASN/Network if available even on failure
-                const probeAsn = result && result.probe ? result.probe.asn : null;
-                const probeNetwork = result && result.probe ? result.probe.network : null;
-
-                console.log(
-                    `[FAILURE] HTTP check to ${location.city}, ${
-                        location.country
-                    } for ${target}: Status ${failureReason}`
+                console.log(`[WS FAILURE] ${probe.city}, ${probe.country} for ${target}: Status ${httpResult.status}`);
+                await saveResultToDb(
+                    measurementId, target, probe.country, probe.city, probe.asn, probe.network,
+                    null, 4000, null, null, null, null, null
                 );
-                values = [
-                    id,
-                    target,
-                    location.country,
-                    location.city,
-                    probeAsn,
-                    probeNetwork,
-                    null,
-                    4000,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                ];
             }
+        });
 
-            const query = `
-      INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `;
+        socket.on("measurement:finished", () => {
+            console.log(`[WS] All results received for ${target} (${measurementId})`);
+            
+            // Проверяем, есть ли локации, от которых не пришло ничего
+            const remainingLocations = locations.filter(l => !resultsReceived.has(`${l.city}-${l.country}`));
+            const cleanup = async () => {
+                for (const loc of remainingLocations) {
+                    await saveResultToDb(measurementId, target, loc.country, loc.city, null, null, null, 4000, null, null, null, null, null);
+                }
+                socket.disconnect();
+                resolve();
+            };
+            cleanup();
+        });
 
-            await pool.query(query, values);
-        }
-        console.log(
-            `--- HTTP check cycle for measurement ${id} completed. ---`
-        );
-    } catch (err) {
-        console.error(
-            `Failed to complete HTTP measurement cycle for ${target}:`,
-            err.message
-        );
-        for (const location of locations) {
-            const query = `
-      INSERT INTO http_logs (
-        probe_id, domain, country, city, asn, network, status_code, total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `;
-            await pool.query(query, [
-                "failed",
-                target,
-                location.country,
-                location.city,
-                null,
-                null,
-                null,
-                4000,
-                null,
-                null,
-                null,
-                null,
-                null,
-            ]);
-        }
-    }
+        // Таймаут безопасности на случай, если Globalping не пришлет 'finished'
+        setTimeout(() => {
+            if (socket.connected) {
+                console.log(`[WS] Safety timeout for ${target} (${measurementId})`);
+                socket.disconnect();
+                resolve();
+            }
+        }, 120000);
+    });
 };
 
 export const httpCheckAndSave = async (locations) => {
     console.log(
-        `--- Starting HTTP check cycle at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
+        `--- Starting HTTP check cycle (WebSocket) at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
     );
+    
+    // Запускаем проверки параллельно
     await Promise.all(
-        domains.map((domain) => checkAndSaveDomain(domain, locations))
+        domains.map((domain) => checkAndSaveDomainWS(domain, locations))
     );
+    
+    console.log(`--- All HTTP check cycles completed at ${new Date().toISOString()} ---`);
 };

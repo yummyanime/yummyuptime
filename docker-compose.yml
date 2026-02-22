@@ -2,9 +2,10 @@ version: "3.8"
 
 services:
     app:
-        image: fristaylo/uptime-checker:latest
+        build: .
         ports:
-            - "80:80"
+            - "3000:3000" # Expose port 3000 for the Express server
+            - "80:80" # Keep port 80 if needed for other reasons (e.g., reverse proxy) - if the client directly accesses the container's port 80, this should serve the client's static files.
         depends_on:
             - db
         environment:

@@ -14,7 +14,19 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
+import path from "path";
+
+const __dirname = path.resolve();
+
 app.use(apiRoutes);
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'client/dist')));
+
+// All other GET requests not handled by the API will return your React app
+app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'client', 'dist', 'index.html'));
+});
 
 app.listen(port, async () => {
     console.log(`Server listening at http://localhost:${port}`);

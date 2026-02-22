@@ -1,5 +1,5 @@
 import pool from "./db.js";
-import { io } from "socket.io-client";
+import fetch from "node-fetch";
 
 const domains = [
     { name: "site.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
@@ -102,9 +102,8 @@ const saveResultToDb = async (id, target, country, city, asn, network, statusCod
 
     // Если данных о времени нет (ошибка)
     if (finalTotalTime === null) {
-        // Для ошибок типа "сбой пробы/сети" (код 599) или отсутствующих данных (финальная очистка)
+        // Для ошибок типа "сбой пробы/сети" (код 599) или отсутствующих данных
         // мы берем время из последнего успешного замера, чтобы не портить график.
-        // Для реальных таймаутов (408) или DNS (503) мы оставим 4000.
         if (statusCode === 599 || statusCode === null) {
             try {
                 const lastLogQuery = `
@@ -143,158 +142,110 @@ const saveResultToDb = async (id, target, country, city, asn, network, statusCod
     await pool.query(query, values);
 };
 
-// Функция для выполнения проверки через WebSocket
-const checkAndSaveDomainWS = (domain, locations) => {
-    return new Promise((resolve) => {
-        const target = domain.name;
-        const apiKey = process.env[domain.apiKeyEnv];
-        const secretKey = process.env.GLOBALPING_SECRET_KEY;
+// Функция для выполнения проверки HTTP (Long Polling)
+const checkAndSaveDomain = async (domain, locations) => {
+    const target = domain.name;
+    const apiKey = process.env[domain.apiKeyEnv];
+    const secretKey = process.env.GLOBALPING_SECRET_KEY;
 
-        if (!apiKey) {
-            console.error(`${domain.apiKeyEnv} is not set.`);
-            return resolve();
-        }
+    if (!apiKey) {
+        console.error(`${domain.apiKeyEnv} is not set.`);
+        return;
+    }
 
-        const socket = io("https://api.globalping.io", {
-            transports: ["websocket"],
-            auth: { token: apiKey },
-            reconnection: false
-        });
-
-        // Прямое логирование внутренних событий socket.io
-        socket.on("api:error", (err) => {
-            console.error(`[WS DEBUG] API ERROR for ${target}:`, JSON.stringify(err, null, 2));
-        });
-
-        socket.on("connect_error", (err) => {
-            console.error(`[WS DEBUG] Connection error for ${target}:`, err.message, err.data);
-            socket.disconnect();
-            resolve();
-        });
-
-        let measurementId = null;
-        const resultsReceived = new Set();
-
-        socket.on("connect", () => {
-            console.log(`[WS DEBUG] Connected event triggered for ${target}, Socket ID: ${socket.id}`);
-            
-            const payload = {
+    try {
+        // Используем ?wait=true для получения результатов в одном запросе
+        const requestOptions = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
                 target: target,
                 type: "http",
                 locations: locations.map((location) => ({
                     ...location,
                     limit: 1,
                 })),
-                query: {
+                measurementOptions: {
                     protocol: "HTTPS",
                     ...(secretKey && {
-                        headers: {
-                            "X-Secret-Key": secretKey,
+                        request: {
+                            headers: {
+                                "X-Secret-Key": secretKey,
+                            },
                         },
                     }),
                 },
-            };
+            }),
+        };
+
+        console.log(`[HTTP] Creating measurement for ${target} with wait=true...`);
+        const response = await fetch(
+            "https://api.globalping.io/v1/measurements?wait=true",
+            requestOptions
+        );
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`[HTTP ERROR] ${target}: ${response.status}. Body: ${errorBody}`);
             
-            console.log(`[WS DEBUG] Sending payload for ${target}:`, JSON.stringify(payload, null, 2));
-
-            socket.emit("measurement:create", payload, (response) => {
-                console.log(`[WS DEBUG] Ack response received for ${target}:`, JSON.stringify(response, null, 2));
-                if (response && response.id) {
-                    measurementId = response.id;
-                    console.log(`[WS DEBUG] Measurement ID set from Ack for ${target}: ${measurementId}`);
-                } else if (response && response.error) {
-                    console.error(`[WS DEBUG] ERROR in Ack for ${target}:`, response.error);
+            // Если лимит запросов (429), помечаем все локации
+            if (response.status === 429) {
+                for (const loc of locations) {
+                    await saveResultToDb("api_limit", target, loc.country, loc.city, null, null, 429, null, null, null, null, null, null);
                 }
-            });
-        });
-
-        // Слушаем ВСЕ события для отладки
-        socket.onAny((eventName, ...args) => {
-            console.log(`[WS DEBUG ANY] Event: ${eventName} for ${target}`, JSON.stringify(args, null, 2));
-        });
-
-        socket.on("api:error", (err) => {
-            console.error(`[WS DEBUG] API ERROR for ${target}:`, JSON.stringify(err, null, 2));
-        });
-
-        socket.on("connect_error", (err) => {
-            console.error(`[WS DEBUG] Connection error for ${target}:`, err.message, err.data);
-            socket.disconnect();
-            resolve();
-        });
-
-        socket.on("measurement:created", (data) => {
-            measurementId = data.id;
-            console.log(`[WS DEBUG] measurement:created for ${target}: ID = ${measurementId}`);
-        });
-
-        socket.on("measurement:result", async (data) => {
-            console.log(`[WS DEBUG] measurement:result received for ${target}, measurementId: ${data.id}`);
-            if (data.id !== measurementId) {
-                console.warn(`[WS DEBUG] ID MISMATCH: expected ${measurementId}, got ${data.id}`);
-                return;
+            } else {
+                for (const loc of locations) {
+                    await saveResultToDb("failed", target, loc.country, loc.city, null, null, 599, null, null, null, null, null, null);
+                }
             }
+            return;
+        }
 
-            const { probe, result: httpResult } = data.result;
-            const locationKey = `${probe.city}-${probe.country}`;
-            resultsReceived.add(locationKey);
+        const data = await response.json();
+        const measurementId = data.id;
+        console.log(`[HTTP SUCCESS] Measurement completed for ${target}, ID: ${measurementId}`);
 
+        for (const resultEntry of data.results) {
+            const { probe, result: httpResult } = resultEntry;
+            
             if (httpResult.status === "finished") {
-                console.log(`[WS SUCCESS] ${probe.city}, ${probe.country} for ${target}: Status ${httpResult.statusCode}`);
+                console.log(`[HTTP] ${probe.city}, ${probe.country} for ${target}: ${httpResult.statusCode}`);
                 await saveResultToDb(
                     measurementId, target, probe.country, probe.city, probe.asn, probe.network,
                     httpResult.statusCode, httpResult.timings.total, httpResult.timings.download,
                     httpResult.timings.firstByte, httpResult.timings.dns, httpResult.timings.tls, httpResult.timings.tcp
                 );
             } else {
-                console.log(`[WS FAILURE] ${probe.city}, ${probe.country} for ${target}: Status ${httpResult.status}`);
-                
-                // Превращаем текстовый статус в цифровой код для базы данных
-                let errorCode = 0; // Default error
-                if (httpResult.status === "failed") errorCode = 599; // Общая ошибка выполнения
-                if (httpResult.status === "timed-out") errorCode = 408; // Request Timeout
-                if (httpResult.status === "dns-error") errorCode = 503; // Service Unavailable (как аналог DNS проблем)
+                console.log(`[HTTP FAILURE] ${probe.city}, ${probe.country} for ${target}: ${httpResult.status}`);
+                let errorCode = 599;
+                if (httpResult.status === "timed-out") errorCode = 408;
+                if (httpResult.status === "dns-error") errorCode = 503;
 
                 await saveResultToDb(
                     measurementId, target, probe.country, probe.city, probe.asn, probe.network,
                     errorCode, null, null, null, null, null, null
                 );
             }
-        });
-
-        socket.on("measurement:finished", () => {
-            console.log(`[WS] All results received for ${target} (${measurementId})`);
-            
-            // Проверяем, есть ли локации, от которых не пришло ничего
-            const remainingLocations = locations.filter(l => !resultsReceived.has(`${l.city}-${l.country}`));
-            const cleanup = async () => {
-                for (const loc of remainingLocations) {
-                    await saveResultToDb(measurementId, target, loc.country, loc.city, null, null, null, null, null, null, null, null, null);
-                }
-                socket.disconnect();
-                resolve();
-            };
-            cleanup();
-        });
-
-        setTimeout(() => {
-            if (socket.connected) {
-                console.log(`[WS] Safety timeout for ${target} (${measurementId})`);
-                socket.disconnect();
-                resolve();
-            }
-        }, 60000);
-    });
+        }
+    } catch (err) {
+        console.error(`[HTTP FATAL] ${target}:`, err.message);
+        for (const loc of locations) {
+            await saveResultToDb("fatal_error", target, loc.country, loc.city, null, null, 599, null, null, null, null, null, null);
+        }
+    }
 };
 
 export const httpCheckAndSave = async (locations) => {
     console.log(
-        `--- Starting HTTP check cycle (WebSocket) at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
+        `--- Starting HTTP check cycle at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
     );
     
     // Запускаем проверки параллельно
     await Promise.all(
-        domains.map((domain) => checkAndSaveDomainWS(domain, locations))
+        domains.map((domain) => checkAndSaveDomain(domain, locations))
     );
     
     console.log(`--- All HTTP check cycles completed at ${new Date().toISOString()} ---`);

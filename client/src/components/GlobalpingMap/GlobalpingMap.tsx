@@ -42,11 +42,17 @@ const GlobalpingMap = () => {
 
     useEffect(() => {
         const fetchProbes = async () => {
+            setLoading(true);
             try {
                 const response = await fetch("/probes");
+                console.log("Probes fetch response status:", response.status, response.statusText);
                 if (response.ok) {
                     const probesData = await response.json();
+                    console.log("Probes data:", probesData);
                     setData(probesData);
+                } else {
+                    const errorText = await response.text();
+                    console.error("Probes fetch error response body:", errorText);
                 }
             } catch (err) {
                 console.error("Failed to fetch probes:", err);

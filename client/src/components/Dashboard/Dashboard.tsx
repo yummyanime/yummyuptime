@@ -9,7 +9,6 @@ import ButtonGroup from "../ButtonGroup/ButtonGroup.tsx";
 import Status from "../Status/Status.tsx";
 import { useDataStatus } from "../../context/DataStatusContext.tsx";
 import ToggleSwitch from "../ToggleSwitch/ToggleSwitch.tsx";
-import GlobalpingMap from "../GlobalpingMap/GlobalpingMap.tsx";
 
 interface Log {
     created_at: string;
@@ -403,7 +402,7 @@ const Dashboard = () => {
                     </div>
                 </div>
                 <Status allLogs={allLogs} loading={loading} timeRange={timeRange} />
-                <GlobalpingMap />
+
                 <div className={styles.chartsGrid}>
                     {loading
                         ? Array.from({ length: domains.length }).map(

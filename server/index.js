@@ -17,9 +17,9 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
-console.log("Applying API routes...");
+
 app.use(apiRoutes);
-console.log("Applying static file serving...");
+
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, 'client/dist')));

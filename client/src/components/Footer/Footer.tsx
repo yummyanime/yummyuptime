@@ -17,7 +17,7 @@ const Footer: React.FC = () => {
                 ))}
             </div>
             <p className={styles.text}>
-                Yummy Uptime {yearText}. Создано специально для проектов Yummy
+                Yummy Uptime {yearText}. Создано специально для проектов Yummy.
             </p>
         </footer>
     );

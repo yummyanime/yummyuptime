@@ -56,7 +56,7 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
                 />
             </div>
             <div className={styles.avgWrapper}>
-                <span className={styles.avgLabel}>Средняя скорость</span>
+                <span className={styles.avgLabel}>Среднее время загрузки</span>
                 <span className={styles.avgValue}>
                     {processedData.avgTotal.toFixed(0)}
                     <small>мс</small>

@@ -1,7 +1,34 @@
 import React, { useMemo } from "react";
 import { Line } from "react-chartjs-2";
+import {
+    Chart as ChartJS,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler,
+    TimeScale,
+    TimeSeriesScale,
+} from "chart.js";
+import "chartjs-adapter-date-fns";
 import { ru } from "date-fns/locale";
+import CrosshairPlugin from "chartjs-plugin-crosshair";
 import styles from "./OverviewChart.module.scss";
+
+ChartJS.register(
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler,
+    CrosshairPlugin,
+    TimeScale,
+    TimeSeriesScale
+);
 
 interface Log {
     created_at: string;
@@ -66,6 +93,9 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
             tooltip: {
                 mode: "index" as const,
                 intersect: false,
+            },
+            crosshair: {
+                enabled: false, // Отключаем, если не нужен, но прописываем конфиг
             },
         },
         scales: {

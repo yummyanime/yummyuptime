@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, Component, type ErrorInfo, type ReactNode } from "react";
 import { Line } from "react-chartjs-2";
 import {
     Chart as ChartJS,
@@ -30,6 +30,37 @@ ChartJS.register(
     TimeSeriesScale
 );
 
+interface ErrorBoundaryProps {
+    children: ReactNode;
+    fallback: ReactNode;
+}
+
+interface ErrorBoundaryState {
+    hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        console.error("Chart error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback;
+        }
+        return this.props.children;
+    }
+}
+
 interface Log {
     created_at: string;
     total_time?: number;
@@ -44,7 +75,6 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
     const { chartData, avgTotal } = useMemo(() => {
         if (allLogs.length === 0) return { chartData: { datasets: [] }, avgTotal: 0 };
 
-        // Группируем логи по времени
         const groupedByTime = allLogs.reduce((acc, log) => {
             const date = new Date(log.created_at);
             date.setSeconds(0, 0);
@@ -83,7 +113,7 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
             },
             avgTotal,
         };
-    }, [allLogs]);
+    }, [allLogs, timeRange]);
 
     const options = {
         responsive: true,
@@ -91,11 +121,26 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
         plugins: {
             legend: { display: false },
             tooltip: {
+                enabled: true,
                 mode: "index" as const,
                 intersect: false,
             },
             crosshair: {
-                enabled: false, // Отключаем, если не нужен, но прописываем конфиг
+                enabled: true,
+                line: {
+                    color: "#818181ff",
+                    width: 2,
+                    dashPattern: [6, 6] as [number, number],
+                },
+                sync: {
+                    enabled: false,
+                },
+                zoom: {
+                    enabled: false,
+                },
+                snap: {
+                    enabled: true,
+                },
             },
         },
         scales: {
@@ -114,6 +159,7 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
                 ticks: { color: "#888" },
             },
             y: {
+                beginAtZero: true,
                 grid: { color: "rgba(255, 255, 255, 0.1)" },
                 ticks: { color: "#888" },
             },
@@ -123,7 +169,9 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, timeRange }) => 
     return (
         <div className={styles.container}>
             <div className={styles.chartWrapper}>
-                <Line data={chartData} options={options} />
+                <ErrorBoundary fallback={<div className={styles.chartError}>Ошибка загрузки графика</div>}>
+                    <Line data={chartData} options={options} />
+                </ErrorBoundary>
             </div>
             <div className={styles.avgWrapper}>
                 <span className={styles.avgLabel}>Средняя скорость</span>

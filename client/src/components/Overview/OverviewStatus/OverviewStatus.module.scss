@@ -1,36 +1,57 @@
 .container {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 20px;
     height: 100%;
     box-sizing: border-box;
+    gap: 10px;
 }
 
 .statusBadge {
-    font-size: 2.5rem;
+    font-size: 1.7rem;
     font-weight: 700;
-    padding: 15px 30px;
     border-radius: var(--border-radius);
     text-align: center;
     transition: all 0.3s ease;
+    color: var(--status-color);
+}
+
+.domainList {
+	display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    max-width: 100%;
+    flex-direction: column;
+}
+
+.domainItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: var(--border-radius-sm);
+    font-size: 1.3rem;
+	font-weight: 600;
+}
+
+.statusCircle {
+	margin-top: 3px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background-color: var(--status-color);
 }
 
 .stable {
-    color: #4caf50;
+    --status-color: var(--color-green);
 }
 
 .warning {
-    color: #ff9800;
+    --status-color: var(--color-yellow);
 }
 
 .critical {
-    color: #f44336;
-}
-
-@media (max-width: 768px) {
-    .statusBadge {
-        font-size: 1.8rem;
-        padding: 10px 20px;
-    }
+    --status-color: var(--color-red);
 }

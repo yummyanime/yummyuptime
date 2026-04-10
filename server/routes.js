@@ -83,6 +83,65 @@ router.get("/http-logs", async (req, res) => {
     }
 });
 
+router.get("/ping-logs", async (req, res) => {
+    try {
+        const { timeRange, domain } = req.query;
+        let interval;
+        let tableName;
+
+        switch (timeRange) {
+            case "month":
+                interval = "30 day";
+                tableName = "ping_hourly_logs";
+                break;
+            case "week":
+                interval = "7 day";
+                tableName = "ping_hourly_logs";
+                break;
+            case "day":
+                interval = "1 day";
+                tableName = "ping_logs";
+                break;
+            case "3hour":
+                interval = "3 hour";
+                tableName = "ping_logs";
+                break;
+            default:
+                interval = "3 hour";
+                tableName = "ping_logs";
+        }
+
+        const columns = `domain, country, city, rtt_avg, rtt_min, rtt_max, packet_loss, created_at`;
+
+        let query;
+        let params;
+
+        if (domain) {
+            query = `
+                SELECT ${columns}
+                FROM ${tableName}
+                WHERE created_at >= NOW() - $1::interval AND city IS NOT NULL AND domain = $2
+                ORDER BY created_at ASC;
+            `;
+            params = [interval, domain];
+        } else {
+            query = `
+                SELECT ${columns}
+                FROM ${tableName}
+                WHERE created_at >= NOW() - $1::interval AND city IS NOT NULL
+                ORDER BY created_at ASC;
+            `;
+            params = [interval];
+        }
+
+        const { rows } = await pool.query(query, params);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
+
 router.get("/locations", (req, res) => {
     res.json(locationGroups);
 });

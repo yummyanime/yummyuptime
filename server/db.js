@@ -50,6 +50,41 @@ export const createHttpTable = async () => {
         await pool.query(hourlyLogsQuery);
         console.log('Table "http_hourly_logs" created or already exists.');
 
+        const pingLogsQuery = `
+    CREATE TABLE IF NOT EXISTS ping_logs (
+      id SERIAL PRIMARY KEY,
+      probe_id VARCHAR(255),
+      domain VARCHAR(255),
+      country VARCHAR(2),
+      city VARCHAR(255),
+      asn INT,
+      network VARCHAR(255),
+      rtt_min FLOAT,
+      rtt_avg FLOAT,
+      rtt_max FLOAT,
+      packet_loss FLOAT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+        await pool.query(pingLogsQuery);
+        console.log('Table "ping_logs" created or already exists.');
+
+        const pingHourlyLogsQuery = `
+    CREATE TABLE IF NOT EXISTS ping_hourly_logs (
+      id SERIAL PRIMARY KEY,
+      domain VARCHAR(255),
+      country VARCHAR(2),
+      city VARCHAR(255),
+      rtt_min FLOAT,
+      rtt_avg FLOAT,
+      rtt_max FLOAT,
+      packet_loss FLOAT,
+      created_at TIMESTAMP
+    );
+  `;
+        await pool.query(pingHourlyLogsQuery);
+        console.log('Table "ping_hourly_logs" created or already exists.');
+
     } catch (err) {
         console.error("Error creating table", err);
     }

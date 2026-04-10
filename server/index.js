@@ -10,6 +10,11 @@ import {
     aggregateHourlyData,
     cleanupOldLogs,
 } from "./httpCheck.js";
+import {
+    pingCheckAndSave,
+    aggregateHourlyPingData,
+    cleanupOldPingLogs,
+} from "./pingCheck.js";
 
 const __dirname = path.resolve();
 
@@ -40,16 +45,28 @@ app.listen(port, async () => {
     };
 
     runChecks(locationGroups["2min"]);
+    pingCheckAndSave().catch((err) =>
+        console.error("Initial ping check failed:", err)
+    );
     aggregateHourlyData().catch((err) =>
         console.error("Initial aggregation failed:", err)
     );
+    aggregateHourlyPingData().catch((err) =>
+        console.error("Initial ping aggregation failed:", err)
+    );
     cleanupOldLogs().catch((err) =>
         console.error("Initial cleanup failed:", err)
+    );
+    cleanupOldPingLogs().catch((err) =>
+        console.error("Initial ping cleanup failed:", err)
     );
 
     // Scheduled runs
     setInterval(() => runChecks(locationGroups["2min"]), 3 * 60 * 1000);
     setInterval(() => runChecks(locationGroups["6min"]), 6 * 60 * 1000);
-    setInterval(aggregateHourlyData, 60 * 60 * 1000); // Run hourly aggregation every hour (60 * 60 * 1000 ms)
-    setInterval(cleanupOldLogs, 60 * 60 * 1000); // Run hourly cleanup every hour
+    setInterval(() => pingCheckAndSave().catch((err) => console.error("Ping check failed:", err)), 3 * 60 * 1000);
+    setInterval(aggregateHourlyData, 60 * 60 * 1000);
+    setInterval(aggregateHourlyPingData, 60 * 60 * 1000);
+    setInterval(cleanupOldLogs, 60 * 60 * 1000);
+    setInterval(cleanupOldPingLogs, 60 * 60 * 1000);
 });

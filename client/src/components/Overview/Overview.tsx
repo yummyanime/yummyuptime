@@ -11,13 +11,24 @@ interface Log {
     total_time?: number;
 }
 
-interface OverviewProps {
-    allLogs: Log[];
-    loading: boolean;
-    timeRange: string;
+interface PingLog {
+    created_at: string;
+    domain?: string;
+    rtt_avg?: number;
+    rtt_min?: number;
+    rtt_max?: number;
+    packet_loss?: number;
 }
 
-const Overview: React.FC<OverviewProps> = ({ allLogs, loading, timeRange }) => {
+interface OverviewProps {
+    allLogs: Log[];
+    pingLogs: PingLog[];
+    loading: boolean;
+    timeRange: string;
+    domain?: string;
+}
+
+const Overview: React.FC<OverviewProps> = ({ allLogs, pingLogs, loading, timeRange, domain }) => {
     if (loading) return <OverviewPlug />;
 
     return (
@@ -26,7 +37,7 @@ const Overview: React.FC<OverviewProps> = ({ allLogs, loading, timeRange }) => {
                 <OverviewStatus allLogs={allLogs} />
             </div>
             <div className={styles.rightPart}>
-                <OverviewChart allLogs={allLogs} timeRange={timeRange} />
+                <OverviewChart allLogs={allLogs} pingLogs={pingLogs} timeRange={timeRange} domain={domain} />
             </div>
         </div>
     );

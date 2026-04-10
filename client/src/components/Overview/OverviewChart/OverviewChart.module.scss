@@ -2,14 +2,41 @@
     padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     box-sizing: border-box;
     height: 100%;
 }
 
+.tabsWrapper {
+    display: flex;
+    gap: 6px;
+}
+
+.tab {
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-text);
+    }
+}
+
+.tabActive {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
 .chartWrapper {
     flex: 1;
-    min-height: 150px;
+    min-height: 120px;
     position: relative;
 }
 

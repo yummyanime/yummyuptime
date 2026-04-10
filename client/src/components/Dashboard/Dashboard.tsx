@@ -64,6 +64,7 @@ const Dashboard = () => {
         () => localStorage.getItem("autoRefresh") === "true"
     );
     const [allLogs, setAllLogs] = useState<Log[]>([]);
+    const [pingLogs, setPingLogs] = useState<any[]>([]);
 
     const timeRangeOptions = [
 		{ value: "3hour", label: "3 часа" },
@@ -295,6 +296,21 @@ const Dashboard = () => {
                 );
             }
             setAllLogs(rawLogs);
+
+            // Fetch ping logs
+            try {
+                const pingUrl = domain
+                    ? `/ping-logs?timeRange=${timeRange}&domain=${domain}`
+                    : `/ping-logs?timeRange=${timeRange}`;
+                const pingResponse = await fetch(pingUrl);
+                if (pingResponse.ok) {
+                    const pingData = await pingResponse.json();
+                    setPingLogs(pingData);
+                }
+            } catch (e) {
+                console.error("Error fetching ping data:", e);
+            }
+
             setStatus("dashboard", "success");
         } catch (e: any) {
             console.error("Error fetching data:", e);
@@ -375,7 +391,7 @@ const Dashboard = () => {
                         />
                     </div>
                 </div>
-                <Overview allLogs={allLogs} loading={loading} timeRange={timeRange} />
+                <Overview allLogs={allLogs} pingLogs={pingLogs} loading={loading} timeRange={timeRange} domain={domain} />
                 <Status allLogs={allLogs} loading={loading} timeRange={timeRange} />
 
                 <div className={styles.chartsGrid}>
@@ -436,7 +452,7 @@ const Dashboard = () => {
                     />
                 </div>
             </div>
-            <Overview allLogs={allLogs} loading={loading} timeRange={timeRange} />
+            <Overview allLogs={allLogs} pingLogs={pingLogs} loading={loading} timeRange={timeRange} domain={domain} />
             <Status allLogs={allLogs} domain={domain} loading={loading} timeRange={timeRange} />
             {loading ? (
                 <div className={styles.chartsGrid}>

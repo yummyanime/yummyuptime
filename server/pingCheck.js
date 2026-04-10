@@ -2,7 +2,7 @@ import pool from "./db.js";
 import fetch from "node-fetch";
 
 const domains = [
-    { name: "site.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
+    { name: "old.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
     { name: "ru.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
     { name: "en.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
     { name: "site.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY4" },

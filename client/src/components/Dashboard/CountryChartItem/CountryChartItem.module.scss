@@ -1,0 +1,54 @@
+.chartCard {
+    box-shadow: var(--box-shadow);
+    background-color: var(--color-dark-bg-1);
+    padding: 15px;
+    border-radius: var(--border-radius-md);
+    display: flex;
+    height: 300px;
+    flex-direction: column;
+    min-width: 0;
+
+    @media (max-width: 500px) {
+        padding: 10px;
+    }
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.chartContainer {
+    flex-grow: 1;
+    position: relative;
+}
+
+.countryIdentifier {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.itemName {
+    margin-left: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.checkInterval {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+    color: var(--color-text-secondary);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: help;
+
+    svg {
+        width: 16px;
+        height: 16px;
+        margin-right: 4px;
+    }
+}

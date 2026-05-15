@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import styles from "./Dashboard.module.scss";
-import Chart from "../Chart/Chart.tsx";
-import { httpRequestTimePreset } from "../Chart/chartPresets.ts";
-import ChartPlug from "../Chart/ChartPlug.tsx";
-import ReactCountryFlag from "react-country-flag";
-import { countries, domains } from "../../data/constants.ts";
 import ButtonGroup from "../ButtonGroup/ButtonGroup.tsx";
 import Status from "../Status/Status.tsx";
 import Overview from "../Overview/Overview.tsx";
 import { useDataStatus } from "../../context/DataStatusContext.tsx";
 import ToggleSwitch from "../ToggleSwitch/ToggleSwitch.tsx";
+import CountryChart from "./CountryChart/CountryChart.tsx";
 
 interface Log {
     created_at: string;
@@ -112,16 +108,10 @@ const Dashboard = () => {
             let rawLogs: Log[] = [];
 
             if (domain) {
-                // console.log(`Fetching http-logs for domain ${domain} with time range ${timeRange}`);
-                // console.log("Fetching locations");
-
                 const [logsResponse, locationsResponse] = await Promise.all([
                     fetch(`/http-logs?timeRange=${timeRange}&domain=${domain}`),
                     fetch("/locations"),
                 ]);
-
-                // console.log("http-logs response status:", logsResponse.status, logsResponse.statusText);
-                // console.log("locations response status:", locationsResponse.status, locationsResponse.statusText);
 
                 if (!logsResponse.ok) {
                     throw new Error(
@@ -135,7 +125,7 @@ const Dashboard = () => {
                 }
 
                 const data = await logsResponse.json();
-                
+
                 logsData = Object.entries(data).reduce((acc, [country, countryData]: [string, any]) => {
                     acc[country] = Object.entries(countryData).reduce((cityAcc, [city, cityData]: [string, any]) => {
                         cityAcc[city] = cityData.map((log: any) => ({
@@ -147,7 +137,7 @@ const Dashboard = () => {
                     }, {} as CityLogs);
                     return acc;
                 }, {} as CountryLogs);
-                
+
                 rawLogs = Object.values(logsData).flatMap(
                     (countryData: any) =>
                         Object.values(countryData).flatMap(
@@ -160,16 +150,14 @@ const Dashboard = () => {
                     processedLogsData[countryKey] = trimCityLogsByTimeRange(logsData[countryKey]);
                 }
                 logsData = processedLogsData;
-                
+
                 const locationsData: LocationGroups =
                     await locationsResponse.json();
                 setLocationGroups(locationsData);
             } else {
-                // console.log(`Fetching http-logs for all domains with time range ${timeRange}`);
                 const response = await fetch(
                     `/http-logs?timeRange=${timeRange}`
                 );
-                // console.log("http-logs response status (all domains):", response.status, response.statusText);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -299,7 +287,6 @@ const Dashboard = () => {
             }
             setAllLogs(rawLogs);
 
-            // Fetch ping logs
             try {
                 const pingUrl = domain
                     ? `/ping-logs?timeRange=${timeRange}&domain=${domain}`
@@ -328,7 +315,7 @@ const Dashboard = () => {
             setLoading(false);
         }
     };
-    
+
     useEffect(() => {
         setLoading(true);
         setStatus("dashboard", "loading");
@@ -371,242 +358,75 @@ const Dashboard = () => {
         localStorage.setItem("timeRange", timeRange);
     }, [timeRange]);
 
+    const controls = (
+        <div className={styles.header}>
+            <div className={styles.controls}>
+                <ButtonGroup
+                    options={timeRangeOptions}
+                    value={timeRange}
+                    onChange={setTimeRange}
+                />
+                <ToggleSwitch
+                    label="Автообновление"
+                    checked={autoRefresh}
+                    onChange={setAutoRefresh}
+                />
+                <ToggleSwitch
+                    label="Скрывать недостоверные данные"
+                    checked={hideUnreliable}
+                    onChange={setHideUnreliable}
+                />
+            </div>
+        </div>
+    );
+
     if (!domain) {
         return (
-            <div className={styles.dashboard}  style={{ marginBottom: "140px" }}>
-                <div className={styles.header}>
-                    <div className={styles.controls}>
-                        <ButtonGroup
-                            options={timeRangeOptions}
-                            value={timeRange}
-                            onChange={setTimeRange}
-                        />
-                         <ToggleSwitch
-                            label="Автообновление"
-                            checked={autoRefresh}
-                            onChange={setAutoRefresh}
-                        />
-                         <ToggleSwitch
-                            label="Скрывать недостоверные данные"
-                            checked={hideUnreliable}
-                            onChange={setHideUnreliable}
-                        />
-                    </div>
-                </div>
-                <Overview allLogs={allLogs} pingLogs={pingLogs} loading={loading} timeRange={timeRange} domain={domain} />
+            <div className={styles.dashboard} style={{ marginBottom: "140px" }}>
+                {controls}
+                <Overview
+                    allLogs={allLogs}
+                    pingLogs={pingLogs}
+                    loading={loading}
+                    timeRange={timeRange}
+                    domain={domain}
+                />
                 <Status allLogs={allLogs} loading={loading} timeRange={timeRange} />
-
-                <div className={styles.chartsGrid}>
-                    {loading
-                        ? Array.from({ length: domains.length }).map(
-                              (_, index) => <ChartPlug key={index} />
-                          )
-                        : domains.map((domain) => {
-                              const cityLogs = domainLogs[domain];
-                              if (!cityLogs) return null;
-                              return (
-                                  <div
-                                      key={domain}
-                                      className={styles.countryChart}
-                                  >
-                                      <div className={styles.countryHeader}>
-                                          <p className={styles.countryName}>
-                                              {domain}
-                                          </p>
-                                          <NavLink to={`${domain}`}>
-                                              <button>Подробнее</button>
-                                          </NavLink>
-                                      </div>
-                                      <div className={styles.chartContainer}>
-                                          <Chart
-                                              cityLogs={cityLogs}
-                                              cities={Object.keys(cityLogs)}
-                                              timeRange={timeRange}
-                                              isChartLoading={isChartLoading}
-                                              {...httpRequestTimePreset}
-                                          />
-                                      </div>
-                                  </div>
-                              );
-                          })}
-                </div>
+                <CountryChart
+                    type="domain"
+                    domainLogs={domainLogs}
+                    timeRange={timeRange}
+                    isChartLoading={isChartLoading}
+                    loading={loading}
+                />
             </div>
         );
     }
 
     return (
         <div className={styles.dashboard}>
-            <div className={styles.header}>
-                <div className={styles.controls}>
-                    <ButtonGroup
-                        options={timeRangeOptions}
-                        value={timeRange}
-                        onChange={setTimeRange}
-                    />
-                    <ToggleSwitch
-                        label="Автообновление"
-                        checked={autoRefresh}
-                        onChange={setAutoRefresh}
-                    />
-                    <ToggleSwitch
-                        label="Скрывать недостоверные данные"
-                        checked={hideUnreliable}
-                        onChange={setHideUnreliable}
-                    />
-                </div>
-            </div>
-            <Overview allLogs={allLogs} pingLogs={pingLogs} loading={loading} timeRange={timeRange} domain={domain} />
-            <Status allLogs={allLogs} domain={domain} loading={loading} timeRange={timeRange} />
-            {loading ? (
-                <div className={styles.chartsGrid}>
-                    {Array.from({ length: 4 }).map((_, index) => (
-                        <ChartPlug key={index} />
-                    ))}
-                    {Array.from({ length: 13 }).map((_, index) => (
-                        <ChartPlug key={index} />
-                    ))}
-                </div>
-            ) : (
-                Object.entries(locationGroups).map(([interval, locations]) => {
-                    const intervalMinutes = parseInt(
-                        interval.replace("min", "")
-                    );
-                    return (
-                        <div key={interval} className={styles.chartGroup}>
-                            <div className={styles.chartsGrid}>
-                                {locations
-                                    .reduce(
-                                        (acc, { country, city }) => {
-                                            let countryGroup = acc.find(
-                                                (g) => g.countryCode === country
-                                            );
-                                            if (!countryGroup) {
-                                                countryGroup = {
-                                                    countryCode: country,
-                                                    cities: [],
-                                                };
-                                                acc.push(countryGroup);
-                                            }
-                                            countryGroup.cities.push(city);
-                                            return acc;
-                                        },
-                                        [] as {
-                                            countryCode: string;
-                                            cities: string[];
-                                        }[]
-                                    )
-                                    .sort(
-                                        (a, b) =>
-                                            countries.findIndex(
-                                                (c) => c.code === a.countryCode
-                                            ) -
-                                            countries.findIndex(
-                                                (c) => c.code === b.countryCode
-                                            )
-                                    )
-                                    .map(({ countryCode, cities }) => {
-                                        const country = countries.find(
-                                            (c) => c.code === countryCode
-                                        );
-                                        const countryName = country
-                                            ? country.name
-                                            : countryCode;
-                                        const cityLogsForCountry =
-                                            httpLogs[countryCode] || {};
-
-                                        return (
-                                            <div
-                                                key={countryCode}
-                                                className={styles.countryChart}
-                                            >
-                                                <div
-                                                    className={
-                                                        styles.countryHeader
-                                                    }
-                                                >
-                                                    <div
-                                                        className={
-                                                            styles.countryIdentifier
-                                                        }
-                                                    >
-                                                        <ReactCountryFlag
-                                                            countryCode={
-                                                                countryCode
-                                                            }
-                                                            svg
-                                                            style={{
-                                                                width: "24px",
-                                                                height: "16px",
-                                                                borderRadius:
-                                                                    "5px",
-                                                            }}
-                                                            title={countryName}
-                                                        />
-                                                        <p
-                                                            className={
-                                                                styles.countryName
-                                                            }
-                                                        >
-                                                            {countryName}
-                                                        </p>
-                                                    </div>
-                                                    <div
-                                                        className={
-                                                            styles.checkInterval
-                                                        }
-                                                        title={`Каждая проверка происходит раз в ${intervalMinutes} минут`}
-                                                    >
-                                                        <svg
-                                                            width="16"
-                                                            height="16"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                        >
-                                                            <circle
-                                                                cx="12"
-                                                                cy="12"
-                                                                r="10"
-                                                            ></circle>
-                                                            <polyline points="12 6 12 12 16 14"></polyline>
-                                                        </svg>
-                                                        <span>
-                                                            {intervalMinutes}м
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={
-                                                        styles.chartContainer
-                                                    }
-                                                >
-                                                    <Chart
-                                                        cityLogs={
-                                                            cityLogsForCountry
-                                                        }
-                                                        cities={cities}
-                                                        timeRange={timeRange}
-                                                        isChartLoading={
-                                                            isChartLoading
-                                                        }
-                                                        {...httpRequestTimePreset}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                            {Object.keys(locationGroups).indexOf(interval) <
-                                Object.keys(locationGroups).length - 1 && (
-                                <hr className={styles.chartDivider} />
-                            )}
-                        </div>
-                    );
-                })
-            )}
+            {controls}
+            <Overview
+                allLogs={allLogs}
+                pingLogs={pingLogs}
+                loading={loading}
+                timeRange={timeRange}
+                domain={domain}
+            />
+            <Status
+                allLogs={allLogs}
+                domain={domain}
+                loading={loading}
+                timeRange={timeRange}
+            />
+            <CountryChart
+                type="country"
+                locationGroups={locationGroups}
+                httpLogs={httpLogs}
+                timeRange={timeRange}
+                isChartLoading={isChartLoading}
+                loading={loading}
+            />
         </div>
     );
 };

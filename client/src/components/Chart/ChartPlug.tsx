@@ -1,7 +1,7 @@
 import React from "react";
-import styles from "./CountryChartPlug.module.scss";
+import styles from "./ChartPlug.module.scss";
 
-const CountryChartPlug: React.FC = () => {
+const ChartPlug: React.FC = () => {
     return (
         <div className={styles.countryChart}>
             <div className={styles.header}>
@@ -20,4 +20,4 @@ const CountryChartPlug: React.FC = () => {
     );
 };
 
-export default CountryChartPlug;
+export default ChartPlug;

@@ -1,6 +1,6 @@
 import { Line } from "react-chartjs-2";
 import { useRef, useEffect, useState } from "react";
-import styles from "./CountryChart.module.scss";
+import styles from "./Chart.module.scss";
 import {
     Chart as ChartJS,
     LinearScale,
@@ -16,7 +16,7 @@ import {
 import "chartjs-adapter-date-fns";
 import { ru } from "date-fns/locale";
 import CrosshairPlugin from "chartjs-plugin-crosshair";
-import { cityTranslations, CHART_COLORS } from "../../data/constants.ts";
+import { CHART_COLORS } from "../../data/constants.ts";
 
 const crosshairInitPatch = {
     id: "crosshairInitPatch",
@@ -38,41 +38,47 @@ ChartJS.register(
     TimeScale,
     TimeSeriesScale
 );
-interface Log {
-    rtt_avg?: number;
+
+export interface ChartLog {
     created_at: string;
-    packet_loss?: number;
-    total_time?: number;
-    status_code?: number;
-    download_time?: number;
-    first_byte_time?: number;
-    dns_time?: number;
-    tls_time?: number;
-    tcp_time?: number;
-    unreliable?: boolean;
 }
 
-interface CityLogs {
-    [city: string]: Log[];
+export interface ChartPoint<TLog extends ChartLog> {
+    x: number;
+    y: number | null;
+    logs: TLog[];
+    representative: TLog;
 }
 
-interface CountryChartProps {
-    cityLogs: CityLogs;
+export interface ChartTooltipContext<TLog extends ChartLog> {
+    series: string;
+    label: string;
+    point: ChartPoint<TLog>;
+}
+
+export interface ChartProps<TLog extends ChartLog> {
+    cityLogs: Record<string, TLog[]>;
     cities: string[];
     timeRange: string;
     isChartLoading: boolean;
     hideLegend?: boolean;
-    isPing?: boolean;
+    getValue: (log: TLog) => number | null | undefined;
+    getLabel?: (series: string) => string;
+    isUnreliable?: (representative: TLog) => boolean;
+    renderTooltip: (ctx: ChartTooltipContext<TLog>) => string[];
 }
 
-const CountryChart = ({
+function Chart<TLog extends ChartLog>({
     cityLogs,
     cities,
     timeRange,
     isChartLoading,
     hideLegend = false,
-    isPing = false,
-}: CountryChartProps) => {
+    getValue,
+    getLabel,
+    isUnreliable,
+    renderTooltip,
+}: ChartProps<TLog>) {
     const [width, setWidth] = useState(window.innerWidth);
 
     useEffect(() => {
@@ -80,22 +86,8 @@ const CountryChart = ({
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
-    type ChartData = {
-        x: number;
-        y: number | null;
-        packet_loss: number;
-        status_code: number | undefined;
-        dns_time: number | undefined;
-        tcp_time: number | undefined;
-        tls_time: number | undefined;
-        first_byte_time: number | undefined;
-        download_time: number | undefined;
-        unreliable: boolean | undefined;
-        rtt_min: number | undefined;
-        rtt_max: number | undefined;
-    };
 
-    const chartRef = useRef<ChartJS<"line", ChartData[]>>(null);
+    const chartRef = useRef<ChartJS<"line", ChartPoint<TLog>[]>>(null);
 
     useEffect(() => {
         const chart = chartRef.current;
@@ -107,6 +99,7 @@ const CountryChart = ({
             }
         }
     }, [isChartLoading]);
+
     useEffect(() => {
         return () => {
             const tooltipEl = document.getElementById("chartjs-tooltip");
@@ -117,70 +110,61 @@ const CountryChart = ({
     }, []);
 
     const datasets = cities.map((city, index) => {
-
         const logs = cityLogs[city] || [];
         const colorIndex = index % CHART_COLORS.length;
         const color = CHART_COLORS[colorIndex] || "#c9cbcf";
+
         const groupedLogs = logs.reduce(
-            (acc: { [key: number]: Log[] }, log: Log) => {
+            (acc: { [key: number]: TLog[] }, log: TLog) => {
                 const date = new Date(log.created_at);
-                let key;
-
                 date.setSeconds(0, 0);
-                key = date.getTime();
-
+                const key = date.getTime();
                 if (!acc[key]) {
                     acc[key] = [];
                 }
                 acc[key].push(log);
                 return acc;
             },
-            {} as { [key: number]: Log[] }
+            {} as { [key: number]: TLog[] }
         );
 
-        const data = Object.entries(groupedLogs).sort(([a], [b]) => Number(a) - Number(b)).map(([key, group]) => {
-            const avgValue =
-                group.reduce(
-                    (sum: number, log: Log) => sum + (log.total_time || 0),
-                    0
-                ) / group.length;
-            const avgPacketLoss =
-                group.reduce(
-                    (sum: number, log: Log) => sum + (log.packet_loss || 0),
-                    0
-                ) / group.length;
-            const representativeLog = group[0];
-
-            return {
-                x: parseInt(key),
-                y: isNaN(avgValue) ? null : avgValue,
-                packet_loss: avgPacketLoss,
-                status_code: representativeLog.status_code,
-                dns_time: representativeLog.dns_time,
-                tcp_time: representativeLog.tcp_time,
-                tls_time: representativeLog.tls_time,
-                first_byte_time: representativeLog.first_byte_time,
-                download_time: representativeLog.download_time,
-                unreliable: representativeLog.unreliable,
-                rtt_min: (representativeLog as any).rtt_min,
-                rtt_max: (representativeLog as any).rtt_max,
-            };
-        });
-
+        const data: ChartPoint<TLog>[] = Object.entries(groupedLogs)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([key, group]) => {
+                let sum = 0;
+                let count = 0;
+                for (const log of group) {
+                    const v = getValue(log);
+                    if (v !== undefined && v !== null && !isNaN(v as number)) {
+                        sum += v as number;
+                        count += 1;
+                    }
+                }
+                const avg = count > 0 ? sum / count : null;
+                return {
+                    x: parseInt(key),
+                    y: avg,
+                    logs: group,
+                    representative: group[0],
+                };
+            });
 
         return {
-            label: cityTranslations[city] || city,
-            data: data,
+            label: getLabel ? getLabel(city) : city,
+            series: city,
+            data,
             borderColor: color,
             backgroundColor: `${color}33`,
             pointBackgroundColor: color,
             pointRadius: (context: any) => {
-                const log = context.raw;
-                return log && log.unreliable ? 5 : 0;
+                const point = context.raw as ChartPoint<TLog> | undefined;
+                return point && isUnreliable?.(point.representative) ? 5 : 0;
             },
             pointBorderColor: (context: any) => {
-                const log = context.raw;
-                return log && log.unreliable ? "red" : color;
+                const point = context.raw as ChartPoint<TLog> | undefined;
+                return point && isUnreliable?.(point.representative)
+                    ? "red"
+                    : color;
             },
             pointHoverRadius: 7,
             pointHitRadius: 20,
@@ -189,6 +173,7 @@ const CountryChart = ({
             spanGaps: false,
         };
     });
+
     const sortedDatasets = [...datasets].sort((a, b) => {
         const aData = a.data
             .map((d) => d.y)
@@ -420,40 +405,22 @@ const CountryChart = ({
                     },
                     callbacks: {
                         label: function (context: any) {
-                            const city = context.dataset.label;
-                            const log = context.raw;
+                            const dataset = context.dataset as {
+                                label: string;
+                                series: string;
+                            };
+                            const point = context.raw as
+                                | ChartPoint<TLog>
+                                | undefined;
 
-                            if (!log) return "";
+                            if (!point) return "";
 
-                            if (isPing) {
-                                const tooltipLines = [
-                                    city,
-                                    `Среднее: ${context.parsed.y !== null ? context.parsed.y.toFixed(1) : "N/A"}мс`,
-                                    `Мин: ${log.rtt_min !== undefined ? Number(log.rtt_min).toFixed(1) : "N/A"}мс`,
-                                    `Макс: ${log.rtt_max !== undefined ? Number(log.rtt_max).toFixed(1) : "N/A"}мс`,
-                                    `Потери: ${log.packet_loss !== undefined ? Number(log.packet_loss).toFixed(0) : "N/A"}%`,
-                                ];
-                                return tooltipLines.join(" | ");
-                            }
-
-                            const tooltipLines = [
-                                city,
-                                `Общее время: ${
-                                    context.parsed.y !== null
-                                        ? context.parsed.y.toFixed(0)
-                                        : "N/A"
-                                }мс`,
-                                ...(log.unreliable
-                                    ? ["Недостоверный запрос"]
-                                    : []),
-                                `Статус: ${log.status_code}`,
-                                `DNS: ${log.dns_time}мс`,
-                                `TCP: ${log.tcp_time}мс`,
-                                `TLS: ${log.tls_time}мс`,
-                                `Первый байт: ${log.first_byte_time}мс`,
-                                `Загрузка: ${log.download_time}мс`,
-                            ];
-                            return tooltipLines.join(" | ");
+                            const lines = renderTooltip({
+                                series: dataset.series ?? dataset.label,
+                                label: dataset.label,
+                                point,
+                            });
+                            return lines.join(" | ");
                         },
                     },
                 },
@@ -518,12 +485,12 @@ const CountryChart = ({
 
     return (
         <Line
-            ref={chartRef}
-            options={getOptions(timeRange, width)}
-            data={chartData}
+            ref={chartRef as any}
+            options={getOptions(timeRange, width) as any}
+            data={chartData as any}
             className={styles.chart}
         />
     );
-};
+}
 
-export default CountryChart;
+export default Chart;

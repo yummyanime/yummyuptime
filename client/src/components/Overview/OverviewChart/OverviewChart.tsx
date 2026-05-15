@@ -1,5 +1,10 @@
 import React, { useMemo, useState } from "react";
-import CountryChart from "../../CountryChart/CountryChart.tsx";
+import Chart from "../../Chart/Chart.tsx";
+import {
+    backendMetricPreset,
+    httpRequestTimePreset,
+    pingPreset,
+} from "../../Chart/chartPresets.ts";
 import ButtonGroup from "../../ButtonGroup/ButtonGroup.tsx";
 import styles from "./OverviewChart.module.scss";
 
@@ -216,14 +221,33 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, pingLogs, timeRa
                 />
             </div>
             <div className={styles.chartWrapper}>
-                <CountryChart
-                    cityLogs={currentData}
-                    cities={currentCities}
-                    timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                    isChartLoading={false}
-                    hideLegend={!isBackend}
-                    isPing={isPingTab}
-                />
+                {isPingTab ? (
+                    <Chart
+                        cityLogs={currentData}
+                        cities={currentCities}
+                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                        isChartLoading={false}
+                        hideLegend
+                        {...pingPreset}
+                    />
+                ) : isBackend ? (
+                    <Chart
+                        cityLogs={currentData}
+                        cities={currentCities}
+                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                        isChartLoading={false}
+                        {...backendMetricPreset}
+                    />
+                ) : (
+                    <Chart
+                        cityLogs={currentData}
+                        cities={currentCities}
+                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                        isChartLoading={false}
+                        hideLegend
+                        {...httpRequestTimePreset}
+                    />
+                )}
             </div>
             <div className={styles.avgWrapper}>
                 {isBackend ? (

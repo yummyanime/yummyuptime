@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import styles from "./Dashboard.module.scss";
-import CountryChart from "../CountryChart/CountryChart.tsx";
-import CountryChartPlug from "../CountryChart/CountryChartPlug.tsx";
+import Chart from "../Chart/Chart.tsx";
+import { httpRequestTimePreset } from "../Chart/chartPresets.ts";
+import ChartPlug from "../Chart/ChartPlug.tsx";
 import ReactCountryFlag from "react-country-flag";
 import { countries, domains } from "../../data/constants.ts";
 import ButtonGroup from "../ButtonGroup/ButtonGroup.tsx";
@@ -398,7 +399,7 @@ const Dashboard = () => {
                 <div className={styles.chartsGrid}>
                     {loading
                         ? Array.from({ length: domains.length }).map(
-                              (_, index) => <CountryChartPlug key={index} />
+                              (_, index) => <ChartPlug key={index} />
                           )
                         : domains.map((domain) => {
                               const cityLogs = domainLogs[domain];
@@ -417,11 +418,12 @@ const Dashboard = () => {
                                           </NavLink>
                                       </div>
                                       <div className={styles.chartContainer}>
-                                          <CountryChart
+                                          <Chart
                                               cityLogs={cityLogs}
                                               cities={Object.keys(cityLogs)}
                                               timeRange={timeRange}
                                               isChartLoading={isChartLoading}
+                                              {...httpRequestTimePreset}
                                           />
                                       </div>
                                   </div>
@@ -458,10 +460,10 @@ const Dashboard = () => {
             {loading ? (
                 <div className={styles.chartsGrid}>
                     {Array.from({ length: 4 }).map((_, index) => (
-                        <CountryChartPlug key={index} />
+                        <ChartPlug key={index} />
                     ))}
                     {Array.from({ length: 13 }).map((_, index) => (
-                        <CountryChartPlug key={index} />
+                        <ChartPlug key={index} />
                     ))}
                 </div>
             ) : (
@@ -581,7 +583,7 @@ const Dashboard = () => {
                                                         styles.chartContainer
                                                     }
                                                 >
-                                                    <CountryChart
+                                                    <Chart
                                                         cityLogs={
                                                             cityLogsForCountry
                                                         }
@@ -590,6 +592,7 @@ const Dashboard = () => {
                                                         isChartLoading={
                                                             isChartLoading
                                                         }
+                                                        {...httpRequestTimePreset}
                                                     />
                                                 </div>
                                             </div>

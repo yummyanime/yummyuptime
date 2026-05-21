@@ -206,6 +206,7 @@ const Dashboard = () => {
                                     dns_time: lastValidLog.dns_time,
                                     tls_time: lastValidLog.tls_time,
                                     tcp_time: lastValidLog.tcp_time,
+                                    server_timing: lastValidLog.server_timing,
                                     unreliable: true,
                                 };
                             } else {
@@ -221,6 +222,7 @@ const Dashboard = () => {
                                         dns_time: firstValid.dns_time,
                                         tls_time: firstValid.tls_time,
                                         tcp_time: firstValid.tcp_time,
+                                        server_timing: firstValid.server_timing,
                                         unreliable: true,
                                     };
                                 }

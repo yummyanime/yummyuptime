@@ -1,5 +1,5 @@
 import { Line } from "react-chartjs-2";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useId } from "react";
 import styles from "./Chart.module.scss";
 import {
     Chart as ChartJS,
@@ -56,6 +56,12 @@ export interface ChartTooltipContext<TLog extends ChartLog> {
     point: ChartPoint<TLog>;
 }
 
+export interface ChartTooltipCell {
+    label: string;
+    value: string;
+    bold?: boolean;
+}
+
 export interface ChartProps<TLog extends ChartLog> {
     cityLogs: Record<string, TLog[]>;
     cities: string[];
@@ -65,8 +71,17 @@ export interface ChartProps<TLog extends ChartLog> {
     getValue: (log: TLog) => number | null | undefined;
     getLabel?: (series: string) => string;
     isUnreliable?: (representative: TLog) => boolean;
-    renderTooltip: (ctx: ChartTooltipContext<TLog>) => string[];
+    renderTooltip: (ctx: ChartTooltipContext<TLog>) => ChartTooltipCell[];
 }
+
+const escapeHtml = (s: string) =>
+    s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
 
 function Chart<TLog extends ChartLog>({
     cityLogs,
@@ -88,6 +103,10 @@ function Chart<TLog extends ChartLog>({
     }, []);
 
     const chartRef = useRef<ChartJS<"line", ChartPoint<TLog>[]>>(null);
+    const isPinnedRef = useRef(false);
+    const reactId = useId();
+    const tooltipIdRef = useRef(`chartjs-tooltip-${reactId}`);
+    const isMobile = width <= 500;
 
     useEffect(() => {
         const chart = chartRef.current;
@@ -97,15 +116,54 @@ function Chart<TLog extends ChartLog>({
             } else {
                 chart.canvas.classList.remove(styles.chartLoading);
             }
+            chart.canvas.setAttribute("data-chart-canvas", "");
         }
     }, [isChartLoading]);
 
     useEffect(() => {
+        const canvas = chartRef.current?.canvas;
+        if (!canvas) return;
+        const handler = () => {
+            isPinnedRef.current = false;
+        };
+        canvas.addEventListener("pointerdown", handler);
         return () => {
-            const tooltipEl = document.getElementById("chartjs-tooltip");
+            canvas.removeEventListener("pointerdown", handler);
+        };
+    }, []);
+
+    useEffect(() => {
+        const id = tooltipIdRef.current;
+        return () => {
+            const tooltipEl = document.getElementById(id);
             if (tooltipEl) {
                 tooltipEl.remove();
             }
+        };
+    }, []);
+
+    useEffect(() => {
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            if (!isPinnedRef.current) return;
+            const target = e.target as Element | null;
+            if (!target) return;
+            // Click on any chart canvas or any chart tooltip → не закрываем,
+            // чтобы другие графики могли работать параллельно с этим запиненным.
+            if (target.closest?.("[data-chart-canvas]")) return;
+            if (target.closest?.('[id^="chartjs-tooltip-"]')) return;
+            isPinnedRef.current = false;
+            const tooltipEl = document.getElementById(tooltipIdRef.current);
+            if (tooltipEl) {
+                tooltipEl.style.opacity = "0";
+                tooltipEl.style.visibility = "hidden";
+                tooltipEl.style.pointerEvents = "none";
+            }
+        };
+        document.addEventListener("mousedown", handleOutsideClick);
+        document.addEventListener("touchstart", handleOutsideClick);
+        return () => {
+            document.removeEventListener("mousedown", handleOutsideClick);
+            document.removeEventListener("touchstart", handleOutsideClick);
         };
     }, []);
 
@@ -255,19 +313,25 @@ function Chart<TLog extends ChartLog>({
                 tooltip: {
                     enabled: false,
                     external: function (context: any) {
-                        let tooltipEl =
-                            document.getElementById("chartjs-tooltip");
+                        const tooltipId = tooltipIdRef.current;
+                        let tooltipEl = document.getElementById(tooltipId);
 
                         if (!tooltipEl) {
                             tooltipEl = document.createElement("div");
-                            tooltipEl.id = "chartjs-tooltip";
-                            tooltipEl.innerHTML = "<table></table>";
+                            tooltipEl.id = tooltipId;
+                            tooltipEl.innerHTML = "<div class=\"chartjs-tooltip-scroll\"><table></table></div>";
                             document.body.appendChild(tooltipEl);
+                        }
+
+                        if (isPinnedRef.current) {
+                            return;
                         }
 
                         const tooltipModel = context.tooltip;
                         if (tooltipModel.opacity === 0) {
                             tooltipEl.style.opacity = "0";
+                            tooltipEl.style.visibility = "hidden";
+                            tooltipEl.style.pointerEvents = "none";
                             return;
                         }
 
@@ -282,60 +346,187 @@ function Chart<TLog extends ChartLog>({
                             tooltipEl.classList.add("no-transform");
                         }
 
-                        function getBody(bodyItem: any) {
-                            return bodyItem.lines;
-                        }
+                        if (tooltipModel.dataPoints && tooltipModel.dataPoints.length > 0) {
+                            const firstPoint = tooltipModel.dataPoints[0];
+                            const formattedDate = new Date(
+                                firstPoint.parsed.x
+                            ).toLocaleDateString("ru-RU", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "long",
+                            });
+                            const formattedTime = new Date(
+                                firstPoint.parsed.x
+                            ).toLocaleTimeString("ru-RU", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                            });
 
-                        if (tooltipModel.body) {
-                            const bodyLines = tooltipModel.body.map(getBody);
+                            type TooltipRow = {
+                                label: string;
+                                color: string;
+                                cells: ChartTooltipCell[];
+                                unreliable: boolean;
+                            };
+                            const rows: TooltipRow[] = [];
+                            for (const dp of tooltipModel.dataPoints as any[]) {
+                                const point = dp.raw as
+                                    | ChartPoint<TLog>
+                                    | undefined;
+                                if (!point || point.y === null) continue;
+                                const dataset = dp.dataset as {
+                                    label: string;
+                                    series: string;
+                                    borderColor: string;
+                                };
+                                const cells = renderTooltip({
+                                    series: dataset.series ?? dataset.label,
+                                    label: dataset.label,
+                                    point,
+                                });
+                                rows.push({
+                                    label: dataset.label,
+                                    color: dataset.borderColor,
+                                    cells,
+                                    unreliable: Boolean(
+                                        isUnreliable?.(point.representative)
+                                    ),
+                                });
+                            }
+
+                            const columnLabels: string[] = [];
+                            const seenColumns = new Set<string>();
+                            for (const row of rows) {
+                                for (const cell of row.cells) {
+                                    if (!seenColumns.has(cell.label)) {
+                                        seenColumns.add(cell.label);
+                                        columnLabels.push(cell.label);
+                                    }
+                                }
+                            }
+
+                            const stickyBg = "rgba(36,36,36,1)";
+                            const vDivider = "border-right:1px solid rgba(255,255,255,0.07);";
+                            const thStyle =
+                                `padding:4px 8px;text-align:right;font-weight:500;color:#aaa;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;${vDivider}`;
+                            const dateThStyle =
+                                `padding:4px 10px 4px 6px;text-align:left;font-weight:700;color:#fff;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;position:sticky;left:0;background:${stickyBg};z-index:2;${vDivider}`;
+                            const groupThStyle =
+                                `padding:4px 8px;text-align:center;font-weight:600;color:#fff;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.15);white-space:nowrap;${vDivider}`;
+
+                            const METRIC_LABELS = new Set([
+                                "Общее",
+                                "DNS",
+                                "TCP",
+                                "TLS",
+                                "TTFB",
+                                "Загрузка",
+                            ]);
+                            const STANDALONE_LABELS = new Set(["Статус"]);
+
+                            const standaloneCols: string[] = [];
+                            const metricCols: string[] = [];
+                            const backendCols: string[] = [];
+                            for (const col of columnLabels) {
+                                if (STANDALONE_LABELS.has(col)) standaloneCols.push(col);
+                                else if (METRIC_LABELS.has(col)) metricCols.push(col);
+                                else backendCols.push(col);
+                            }
+                            // "Общее2" (server_timing.total) ставим первым в backend-группе
+                            const totalIdx = backendCols.indexOf("Общее2");
+                            if (totalIdx > 0) {
+                                backendCols.splice(totalIdx, 1);
+                                backendCols.unshift("Общее2");
+                            }
+                            const orderedColumns = [
+                                ...standaloneCols,
+                                ...metricCols,
+                                ...backendCols,
+                            ];
+                            const showGroups = metricCols.length > 0;
 
                             let innerHtml = "<thead>";
-
-                            if (tooltipModel.dataPoints.length > 0) {
-                                const firstPoint = tooltipModel.dataPoints[0];
-                                if (firstPoint && firstPoint.parsed) {
-                                    const formattedDate = new Date(
-                                        firstPoint.parsed.x
-                                    ).toLocaleDateString("ru-RU", {
-                                        weekday: "long",
-                                        day: "numeric",
-                                        month: "long",
-                                    });
-                                    const formattedTime = new Date(
-                                        firstPoint.parsed.x
-                                    ).toLocaleTimeString("ru-RU", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    });
-                                    innerHtml +=
-                                        "<tr><th>" +
-                                        formattedDate +
-                                        " в " +
-                                        formattedTime +
-                                        "</th></tr>";
+                            if (showGroups) {
+                                innerHtml += `<tr><th rowspan="2" style="${dateThStyle}">${escapeHtml(
+                                    `${formattedDate} в ${formattedTime}`
+                                )}</th>`;
+                                for (const col of standaloneCols) {
+                                    innerHtml += `<th rowspan="2" style="${thStyle}">${escapeHtml(
+                                        col
+                                    )}</th>`;
                                 }
+                                if (metricCols.length > 0) {
+                                    innerHtml += `<th colspan="${metricCols.length}" style="${groupThStyle}">Метрики в мс</th>`;
+                                }
+                                if (backendCols.length > 0) {
+                                    innerHtml += `<th colspan="${backendCols.length}" style="${groupThStyle}">Backend в мс</th>`;
+                                }
+                                innerHtml += "</tr><tr>";
+                                for (const col of metricCols) {
+                                    innerHtml += `<th style="${thStyle}">${escapeHtml(
+                                        col
+                                    )}</th>`;
+                                }
+                                for (const col of backendCols) {
+                                    innerHtml += `<th style="${thStyle}">${escapeHtml(
+                                        col
+                                    )}</th>`;
+                                }
+                                innerHtml += "</tr>";
+                            } else {
+                                innerHtml += `<tr><th style="${dateThStyle}">${escapeHtml(
+                                    `${formattedDate} в ${formattedTime}`
+                                )}</th>`;
+                                for (const col of orderedColumns) {
+                                    innerHtml += `<th style="${thStyle}">${escapeHtml(
+                                        col
+                                    )}</th>`;
+                                }
+                                innerHtml += "</tr>";
                             }
                             innerHtml += "</thead><tbody>";
 
-                            bodyLines.forEach(function (body: any, i: any) {
-                                const colors = tooltipModel.labelColors[i];
-                                let style = "background:" + colors.borderColor;
-                                style += "; border-color:" + colors.borderColor;
-                                style += "; border-width: 2px";
-                                style += "; margin-right: 5px";
-                                style += "; height: 10px";
-                                style += "; width: 10px";
-                                style += "; display: inline-block";
-                                style += "; border-radius: 50%";
-                                const span =
-                                    '<span style="' + style + '"></span>';
-                                innerHtml +=
-                                    "<tr><td>" + span + body + "</td></tr>";
-                            });
+                            for (const row of rows) {
+                                const cityStyle =
+                                    `padding:4px 10px 4px 6px;text-align:left;font-weight:500;color:#fff;white-space:nowrap;` +
+                                    `position:sticky;left:0;background:${stickyBg};z-index:1;` +
+                                    `box-shadow:inset 0 -2px 0 ${row.color};${vDivider}`;
+                                const cityLabelHtml = row.unreliable
+                                    ? `${escapeHtml(row.label)} <span style="color:#ff6b6b;font-size:11px;" title="Недостоверный замер">●</span>`
+                                    : escapeHtml(row.label);
+                                innerHtml += `<tr><th scope="row" style="${cityStyle}">${cityLabelHtml}</th>`;
+
+                                const byLabel = new Map(
+                                    row.cells.map((c) => [c.label, c])
+                                );
+                                for (const col of orderedColumns) {
+                                    const cell = byLabel.get(col);
+                                    const v = cell?.value ?? "";
+                                    const weight = cell?.bold ? "700" : "400";
+                                    innerHtml += `<td style="padding:4px 8px;text-align:right;color:#e0e0e0;font-variant-numeric:tabular-nums;font-weight:${weight};${vDivider}">${escapeHtml(
+                                        v
+                                    )}</td>`;
+                                }
+                                innerHtml += "</tr>";
+                            }
                             innerHtml += "</tbody>";
+
+                            const scrollWrap = tooltipEl.querySelector(
+                                ".chartjs-tooltip-scroll"
+                            ) as HTMLElement | null;
+                            if (scrollWrap) {
+                                scrollWrap.setAttribute(
+                                    "style",
+                                    "overflow-x:auto;overflow-y:hidden;max-width:100%;-webkit-overflow-scrolling:touch;pointer-events:auto;"
+                                );
+                            }
 
                             let table = tooltipEl.querySelector("table");
                             if (table) {
+                                table.setAttribute(
+                                    "style",
+                                    "border-collapse:collapse;border-spacing:0;"
+                                );
                                 table.innerHTML = innerHtml;
                             }
                         }
@@ -344,6 +535,7 @@ function Chart<TLog extends ChartLog>({
                         const position = chart.canvas.getBoundingClientRect();
 
                         tooltipEl.style.opacity = "1";
+                        tooltipEl.style.visibility = "visible";
                         tooltipEl.style.position = "absolute";
                         tooltipEl.style.fontFamily =
                             tooltipModel.options.bodyFont.family;
@@ -351,27 +543,24 @@ function Chart<TLog extends ChartLog>({
                             tooltipModel.options.bodyFont.size + "px";
                         tooltipEl.style.fontStyle =
                             tooltipModel.options.bodyFont.style;
-                        tooltipEl.style.padding =
-                            tooltipModel.padding +
-                            "px " +
-                            tooltipModel.padding +
-                            "px";
                         tooltipEl.style.pointerEvents = "none";
                         tooltipEl.style.backgroundColor = "rgba(36, 36, 36, 1)";
                         tooltipEl.style.borderRadius = "5px";
                         tooltipEl.style.color = "white";
-                        tooltipEl.style.maxWidth = "500px";
                         tooltipEl.style.whiteSpace = "normal";
-                        tooltipEl.style.wordWrap = "break-word";
                         tooltipEl.style.padding = "5px";
                         tooltipEl.style.zIndex = "9999";
 
-                        if (width <= 500) {
+                        if (isMobile) {
                             tooltipEl.style.width = position.width + "px";
+                            tooltipEl.style.maxWidth = position.width + "px";
                             tooltipEl.style.left = position.left + "px";
                             tooltipEl.style.top =
                                 position.top + window.pageYOffset + 225 + "px";
                         } else {
+                            tooltipEl.style.width = "";
+                            tooltipEl.style.maxWidth =
+                                "min(600px, calc(100vw - 20px))";
                             let left =
                                 position.left +
                                 window.pageXOffset +
@@ -404,24 +593,7 @@ function Chart<TLog extends ChartLog>({
                         size: 14,
                     },
                     callbacks: {
-                        label: function (context: any) {
-                            const dataset = context.dataset as {
-                                label: string;
-                                series: string;
-                            };
-                            const point = context.raw as
-                                | ChartPoint<TLog>
-                                | undefined;
-
-                            if (!point) return "";
-
-                            const lines = renderTooltip({
-                                series: dataset.series ?? dataset.label,
-                                label: dataset.label,
-                                point,
-                            });
-                            return lines.join(" | ");
-                        },
+                        label: () => "",
                     },
                 },
                 crosshair: {
@@ -445,6 +617,26 @@ function Chart<TLog extends ChartLog>({
             interaction: {
                 mode: "index" as const,
                 intersect: false,
+            },
+            events: (isMobile
+                ? ["click", "touchstart"]
+                : ["mousemove", "mouseout", "click", "touchstart"]) as any,
+            onClick: (event: any, elements: any[]) => {
+                if (elements && elements.length > 0) {
+                    isPinnedRef.current = false;
+                    const chart = chartRef.current as any;
+                    if (chart?.tooltip) {
+                        chart.tooltip.setActiveElements(elements, {
+                            x: event?.x ?? 0,
+                            y: event?.y ?? 0,
+                        });
+                        const ext = chart?.options?.plugins?.tooltip?.external;
+                        if (typeof ext === "function") {
+                            ext({ tooltip: chart.tooltip, chart });
+                        }
+                    }
+                    isPinnedRef.current = true;
+                }
             },
             scales: {
                 y: {

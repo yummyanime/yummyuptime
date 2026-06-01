@@ -20,7 +20,7 @@ export const countries = [
 
 export const domains = [
     "old.yummyani.me",
-    "site.yummy-ani.me",
+    "old.yummy-ani.me",
     "ru.yummyani.me",
     "en.yummyani.me",
 ];

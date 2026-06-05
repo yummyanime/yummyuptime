@@ -1,6 +1,6 @@
 import express from "express";
 import pool from "./db.js";
-import { locationGroups } from "./httpCheck.js";
+import { locationGroups, domains as monitoredDomains } from "./httpCheck.js";
 
 const router = express.Router();
 
@@ -164,5 +164,124 @@ router.get("/locations", (req, res) => {
     res.json(locationGroups);
 });
 
+const PROBE_ERROR_CODE = 900;
+const SLOW_RESPONSE_MS = 1500;
+
+const isProblematicResult = (r) =>
+    Number(r.status_code) < PROBE_ERROR_CODE &&
+    (r.status_code !== 200 ||
+        r.total_time === null ||
+        (r.total_time !== null && r.total_time > SLOW_RESPONSE_MS));
+
+const getBucketStatus = (results) => {
+    const relevant = results.filter(
+        (r) => Number(r.status_code) < PROBE_ERROR_CODE
+    );
+    const probeErrorCount = results.filter(
+        (r) => Number(r.status_code) >= PROBE_ERROR_CODE
+    ).length;
+
+    if (probeErrorCount > 0 && relevant.length === 0) return "PROBE_ERROR";
+
+    const captchaCount = relevant.filter(
+        (r) => Number(r.status_code) === 202
+    ).length;
+    if (captchaCount > 0) return "CAPTCHA";
+
+    const problematic = relevant.filter(isProblematicResult).length;
+
+    if (relevant.length > 0 && problematic === relevant.length) return "DOWN";
+    if (problematic >= 3) return "DEGRADED_HIGH";
+    if (problematic === 1) return "DEGRADED_LOW";
+    if (problematic >= 2) return "DEGRADED_MEDIUM";
+    return "UP";
+};
+
+const UP_STATUSES = new Set([
+    "UP",
+    "DEGRADED_LOW",
+    "DEGRADED_MEDIUM",
+    "DEGRADED_HIGH",
+    "CAPTCHA",
+]);
+
+router.get("/status-summary", async (req, res) => {
+    try {
+        const count = Math.min(
+            Math.max(parseInt(req.query.count, 10) || 24, 1),
+            500
+        );
+
+        const { rows } = await pool.query(
+            `
+            SELECT domain, country, city, status_code, total_time, created_at
+            FROM http_logs
+            WHERE created_at >= NOW() - $1::interval AND city IS NOT NULL
+            ORDER BY created_at ASC;
+            `,
+            ["24 hour"]
+        );
+
+        const byDomain = {};
+        for (const row of rows) {
+            if (!byDomain[row.domain]) byDomain[row.domain] = [];
+            byDomain[row.domain].push(row);
+        }
+
+        const domainData = {};
+        for (const [domain, logs] of Object.entries(byDomain)) {
+            const buckets = new Map();
+            for (const log of logs) {
+                const key = new Date(log.created_at)
+                    .toISOString()
+                    .substring(0, 16);
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(log);
+            }
+
+            const orderedKeys = [...buckets.keys()].sort();
+            const statuses = orderedKeys.map((k) =>
+                getBucketStatus(buckets.get(k))
+            );
+
+            const consideredBuckets = statuses.filter((s) => s !== "PROBE_ERROR");
+            const upBuckets = consideredBuckets.filter((s) =>
+                UP_STATUSES.has(s)
+            ).length;
+            const uptime24h = consideredBuckets.length
+                ? upBuckets / consideredBuckets.length
+                : null;
+
+            const validTimes = logs
+                .filter(
+                    (l) =>
+                        Number(l.status_code) < PROBE_ERROR_CODE &&
+                        l.total_time !== null
+                )
+                .map((l) => l.total_time);
+            const avgResponseMs = validTimes.length
+                ? Math.round(
+                      validTimes.reduce((a, b) => a + b, 0) / validTimes.length
+                  )
+                : null;
+
+            domainData[domain] = {
+                current: statuses[statuses.length - 1] ?? "PROBE_ERROR",
+                heartbeats: statuses.slice(-count),
+                ...(uptime24h !== null && { uptime24h }),
+                ...(avgResponseMs !== null && { avgResponseMs }),
+            };
+        }
+
+        const domains = monitoredDomains
+            .filter(({ name }) => domainData[name])
+            .map(({ name }) => ({ domain: name, ...domainData[name] }));
+
+        res.json({ updatedAt: new Date().toISOString(), domains });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
 
 export default router;

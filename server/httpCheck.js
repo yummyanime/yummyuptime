@@ -22,7 +22,7 @@ const classifyProbeFailure = (rawOutput) => {
     return INTERNAL_STATUS.PROBE_FAIL;
 };
 
-const domains = [
+export const domains = [
     { name: "old.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
     { name: "ru.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
     { name: "en.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },

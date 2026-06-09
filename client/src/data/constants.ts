@@ -21,8 +21,8 @@ export const countries = [
 export const domains = [
     "old.yummyani.me",
     "old.yummy-ani.me",
-    "ru.yummyani.me",
-    "en.yummyani.me",
+    "new.yummyani.me",
+    "new.yummy-ani.me",
 ];
 
 export const cityTranslations: { [key: string]: string } = {

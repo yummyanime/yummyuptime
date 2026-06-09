@@ -3,8 +3,8 @@ import fetch from "node-fetch";
 
 const domains = [
     { name: "old.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
-    { name: "ru.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
-    { name: "en.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
+    { name: "new.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
+    { name: "new.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
     { name: "old.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY4" },
 ];
 

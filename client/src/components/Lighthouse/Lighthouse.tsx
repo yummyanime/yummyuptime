@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from "react";
-import Button from "../Button/Button.tsx";
 import LhSummary, { type ScreenshotData } from "./_content/LhSummary/LhSummary.tsx";
 import LhChart from "./_content/LhChart/LhChart.tsx";
 import { useDashboardSettings } from "../../context/DashboardSettingsContext.tsx";
@@ -84,24 +83,12 @@ const Lighthouse: React.FC<LighthouseProps> = ({ domain }) => {
 
     return (
         <div className={styles.lighthouse}>
-            <div className={styles.header}>
-                <div className={styles.strategySwitch}>
-                    <Button
-                        active={strategy === "desktop"}
-                        onClick={() => handleStrategy("desktop")}
-                    >
-                        ПК
-                    </Button>
-                    <Button
-                        active={strategy === "mobile"}
-                        onClick={() => handleStrategy("mobile")}
-                    >
-                        Телефон
-                    </Button>
-                </div>
-            </div>
-
-            <LhSummary logs={logs} strategy={strategy} screenshot={screenshot} />
+            <LhSummary
+                logs={logs}
+                strategy={strategy}
+                onStrategyChange={handleStrategy}
+                screenshot={screenshot}
+            />
 
             <div className={styles.divider} />
 

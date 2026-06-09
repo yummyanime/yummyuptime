@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import Button from "../../../Button/Button.tsx";
 import {
     getMetric,
     rate,
@@ -18,6 +19,7 @@ export interface ScreenshotData {
 interface LhSummaryProps {
     logs: LighthouseLog[];
     strategy: string;
+    onStrategyChange: (strategy: "mobile" | "desktop") => void;
     screenshot: ScreenshotData | null;
 }
 
@@ -58,7 +60,12 @@ const latestOf = (
     return null;
 };
 
-const LhSummary: React.FC<LhSummaryProps> = ({ logs, strategy, screenshot }) => {
+const LhSummary: React.FC<LhSummaryProps> = ({
+    logs,
+    strategy,
+    onStrategyChange,
+    screenshot,
+}) => {
     const cards = useMemo(
         () =>
             SUMMARY_KEYS.map((key) => {
@@ -88,6 +95,34 @@ const LhSummary: React.FC<LhSummaryProps> = ({ logs, strategy, screenshot }) => 
 
     return (
         <div className={styles.summary}>
+            <div className={styles.screenshot}>
+                <div className={styles.strategySwitch}>
+                    <Button
+                        active={strategy === "desktop"}
+                        onClick={() => onStrategyChange("desktop")}
+                    >
+                        ПК
+                    </Button>
+                    <Button
+                        active={strategy === "mobile"}
+                        onClick={() => onStrategyChange("mobile")}
+                    >
+                        Телефон
+                    </Button>
+                </div>
+                {screenshot?.image ? (
+                    <>
+                        <img src={screenshot.image} alt="Скриншот страницы" />
+                        <span className={styles.shotMeta}>
+                            {strategy === "desktop" ? "ПК" : "Телефон"}
+                            {updatedLabel ? ` · ${updatedLabel}` : ""}
+                        </span>
+                    </>
+                ) : (
+                    <div className={styles.shotPlaceholder}>Скриншот пока не получен</div>
+                )}
+            </div>
+
             <div className={styles.cards}>
                 {cards.map(({ metric, avg, p75, rating, p75Rating, hasField }) => (
                     <div key={metric.key} className={styles.card}>
@@ -120,20 +155,6 @@ const LhSummary: React.FC<LhSummaryProps> = ({ logs, strategy, screenshot }) => 
                         ) : null}
                     </div>
                 ))}
-            </div>
-
-            <div className={styles.screenshot}>
-                {screenshot?.image ? (
-                    <>
-                        <img src={screenshot.image} alt="Скриншот страницы" />
-                        <span className={styles.shotMeta}>
-                            {strategy === "desktop" ? "ПК" : "Телефон"}
-                            {updatedLabel ? ` · ${updatedLabel}` : ""}
-                        </span>
-                    </>
-                ) : (
-                    <div className={styles.shotPlaceholder}>Скриншот пока не получен</div>
-                )}
             </div>
         </div>
     );

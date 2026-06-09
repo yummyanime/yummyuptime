@@ -23,8 +23,8 @@ interface LhChartProps {
     isChartLoading: boolean;
 }
 
-const LAB_SERIES = "Lab";
-const FIELD_SERIES = "CrUX p75";
+const LAB_SERIES = "Uptime сервис";
+const FIELD_SERIES = "Google";
 
 const LhChart: React.FC<LhChartProps> = ({ logs, timeRange, isChartLoading }) => {
     const [activeMetric, setActiveMetric] = useState<LighthouseMetricKey>(

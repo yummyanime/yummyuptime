@@ -13,9 +13,17 @@
     flex: 1 1 0;
     min-width: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
     gap: 10px;
     align-content: start;
+
+    @media (max-width: 700px) {
+        grid-template-columns: repeat(2, minmax(110px, 1fr));
+    }
+
+    @media (max-width: 430px) {
+        grid-template-columns: 1fr;
+    }
 }
 
 .card {
@@ -79,11 +87,11 @@
 }
 
 .screenshot {
-    flex: 0 0 200px;
+    flex: 0 0 220px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 
     img {
         max-width: 100%;
@@ -96,6 +104,12 @@
     @media (max-width: 830px) {
         flex-basis: auto;
     }
+}
+
+.strategySwitch {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
 }
 
 .shotMeta {

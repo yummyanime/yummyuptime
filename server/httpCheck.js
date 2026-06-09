@@ -24,9 +24,10 @@ const classifyProbeFailure = (rawOutput) => {
 
 export const domains = [
     { name: "old.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY" },
-    { name: "new.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
-    { name: "new.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
+    { name: "ru.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY2" },
+    { name: "en.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY3" },
     { name: "old.yummy-ani.me", apiKeyEnv: "GLOBALPING_API_KEY4" },
+    { name: "uk.yummyani.me", apiKeyEnv: "GLOBALPING_API_KEY5" },
 ];
 
 const toNonNegativeNumberOrNull = (value) => {

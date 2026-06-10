@@ -73,6 +73,7 @@ const ReportChart: React.FC<ReportChartProps> = ({ data, loading }) => {
                 },
                 y: {
                     beginAtZero: true,
+                    suggestedMax: 10,
                     ticks: { color: "#aaa", precision: 0 },
                     grid: { color: "rgba(255,255,255,0.06)" },
                 },

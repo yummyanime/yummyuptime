@@ -7,6 +7,7 @@ import {
     BarElement,
     TimeScale,
     Tooltip,
+    type TooltipItem,
 } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { ru } from "date-fns/locale";
@@ -47,10 +48,10 @@ const ReportChart: React.FC<ReportChartProps> = ({ data, loading }) => {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        title: (items: { label: string }[]) =>
+                        title: (items: TooltipItem<"bar">[]) =>
                             items[0]?.label ?? "",
-                        label: (item: { parsed: { y: number } }) =>
-                            `Жалоб: ${item.parsed.y}`,
+                        label: (item: TooltipItem<"bar">) =>
+                            `Жалоб: ${item.parsed.y ?? 0}`,
                     },
                 },
             },

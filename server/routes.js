@@ -367,6 +367,7 @@ const OUTAGE_REASONS = new Set([
     "slow",
     "no_media",
     "freezing",
+    "auth",
 ]);
 
 const OUTAGE_WINDOW_HOURS = 24;
@@ -374,9 +375,14 @@ const OUTAGE_BUCKET_MS = 30 * 60 * 1000;
 
 router.post("/outage-reports", async (req, res) => {
     try {
-        const { reason, domain } = req.body ?? {};
+        const { reason, reasons, domain } = req.body ?? {};
 
-        if (!OUTAGE_REASONS.has(reason)) {
+        const rawReasons = Array.isArray(reasons) ? reasons : [reason];
+        const validReasons = [...new Set(rawReasons)].filter((r) =>
+            OUTAGE_REASONS.has(r)
+        );
+
+        if (validReasons.length === 0) {
             return res.status(400).json({ error: "Invalid reason" });
         }
 
@@ -386,8 +392,9 @@ router.post("/outage-reports", async (req, res) => {
                 : null;
 
         await pool.query(
-            `INSERT INTO outage_reports (domain, reason) VALUES ($1, $2)`,
-            [domainValue, reason]
+            `INSERT INTO outage_reports (domain, reason)
+             SELECT $1, reason FROM unnest($2::text[]) AS reason`,
+            [domainValue, validReasons]
         );
 
         res.status(201).json({ ok: true });

@@ -3,6 +3,7 @@ export const REASONS = [
     { code: "slow", label: "Долгая загрузка" },
     { code: "no_media", label: "Нет изображений и видео" },
     { code: "freezing", label: "Зависает" },
+    { code: "auth", label: "Не работает регистрация/авторизация" },
 ] as const;
 
 export type ReasonCode = (typeof REASONS)[number]["code"];

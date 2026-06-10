@@ -8,21 +8,30 @@ interface ReportBlockProps {
 }
 
 const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
-    const [selected, setSelected] = useState<ReasonCode | null>(null);
+    const [selected, setSelected] = useState<ReasonCode[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [justReported, setJustReported] = useState(false);
 
+    const toggleReason = (code: ReasonCode) => {
+        setSelected((prev) =>
+            prev.includes(code)
+                ? prev.filter((c) => c !== code)
+                : [...prev, code]
+        );
+        setJustReported(false);
+    };
+
     const handleSubmit = async () => {
-        if (!selected || submitting) return;
+        if (selected.length === 0 || submitting) return;
         setSubmitting(true);
         try {
             const res = await fetch("/outage-reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ reason: selected }),
+                body: JSON.stringify({ reasons: selected }),
             });
             if (res.ok) {
-                setSelected(null);
+                setSelected([]);
                 setJustReported(true);
                 onReported?.();
             }
@@ -39,11 +48,8 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
                 {REASONS.map((r) => (
                     <Button
                         key={r.code}
-                        active={selected === r.code}
-                        onClick={() => {
-                            setSelected(r.code);
-                            setJustReported(false);
-                        }}
+                        active={selected.includes(r.code)}
+                        onClick={() => toggleReason(r.code)}
                     >
                         {r.label}
                     </Button>
@@ -53,7 +59,7 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
             <button
                 type="button"
                 className={styles.submitButton}
-                disabled={!selected || submitting}
+                disabled={selected.length === 0 || submitting}
                 onClick={handleSubmit}
             >
                 {submitting ? "Отправляем…" : "Сообщить о сбое"}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Button from "../Button/Button.tsx";
 import { REASONS, type ReasonCode } from "../../data/outage.ts";
 import styles from "./ReportBlock.module.scss";
@@ -7,10 +7,34 @@ interface ReportBlockProps {
     onReported?: () => void;
 }
 
+const REPORT_STORAGE_KEY = "outageReportedAt";
+const REPORT_COOLDOWN_MS = 60 * 60 * 1000;
+
+const hasRecentlyReported = () => {
+    const raw = localStorage.getItem(REPORT_STORAGE_KEY);
+    if (!raw) return false;
+    const reportedAt = Number(raw);
+    return Number.isFinite(reportedAt) && Date.now() - reportedAt < REPORT_COOLDOWN_MS;
+};
+
 const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
     const [selected, setSelected] = useState<ReasonCode[]>([]);
     const [submitting, setSubmitting] = useState(false);
-    const [justReported, setJustReported] = useState(false);
+    const [reported, setReported] = useState(hasRecentlyReported);
+
+    useEffect(() => {
+        if (!reported) return;
+        const raw = localStorage.getItem(REPORT_STORAGE_KEY);
+        const reportedAt = Number(raw);
+        if (!Number.isFinite(reportedAt)) return;
+        const remaining = REPORT_COOLDOWN_MS - (Date.now() - reportedAt);
+        if (remaining <= 0) {
+            setReported(false);
+            return;
+        }
+        const timer = setTimeout(() => setReported(false), remaining);
+        return () => clearTimeout(timer);
+    }, [reported]);
 
     const toggleReason = (code: ReasonCode) => {
         setSelected((prev) =>
@@ -18,11 +42,10 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
                 ? prev.filter((c) => c !== code)
                 : [...prev, code]
         );
-        setJustReported(false);
     };
 
     const handleSubmit = async () => {
-        if (selected.length === 0 || submitting) return;
+        if (selected.length === 0 || submitting || reported) return;
         setSubmitting(true);
         try {
             const res = await fetch("/outage-reports", {
@@ -31,8 +54,9 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
                 body: JSON.stringify({ reasons: selected }),
             });
             if (res.ok) {
+                localStorage.setItem(REPORT_STORAGE_KEY, String(Date.now()));
                 setSelected([]);
-                setJustReported(true);
+                setReported(true);
                 onReported?.();
             }
         } catch (e) {
@@ -49,6 +73,7 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
                     <Button
                         key={r.code}
                         active={selected.includes(r.code)}
+                        disabled={reported}
                         onClick={() => toggleReason(r.code)}
                     >
                         {r.label}
@@ -58,18 +83,16 @@ const ReportBlock: React.FC<ReportBlockProps> = ({ onReported }) => {
 
             <button
                 type="button"
-                className={styles.submitButton}
-                disabled={selected.length === 0 || submitting}
+                className={`${styles.submitButton} ${reported ? styles.reported : ""}`}
+                disabled={(selected.length === 0 && !reported) || submitting || reported}
                 onClick={handleSubmit}
             >
-                {submitting ? "Отправляем…" : "Сообщить о сбое"}
+                {reported
+                    ? "Сообщено о сбое"
+                    : submitting
+                      ? "Отправляем…"
+                      : "Сообщить о сбое"}
             </button>
-
-            {justReported && (
-                <div className={styles.thanks}>
-                    Спасибо! Ваше сообщение учтено.
-                </div>
-            )}
         </div>
     );
 };

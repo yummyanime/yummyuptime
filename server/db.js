@@ -148,11 +148,25 @@ export const createHttpTable = async () => {
     CREATE TABLE IF NOT EXISTS outage_reports (
       id SERIAL PRIMARY KEY,
       domain VARCHAR(255),
-      reason VARCHAR(64) NOT NULL,
+      reasons VARCHAR(64)[] NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
         await pool.query(outageReportsQuery);
+        await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'outage_reports' AND column_name = 'reason'
+      ) THEN
+        ALTER TABLE outage_reports ADD COLUMN IF NOT EXISTS reasons VARCHAR(64)[];
+        UPDATE outage_reports SET reasons = ARRAY[reason] WHERE reasons IS NULL;
+        ALTER TABLE outage_reports ALTER COLUMN reasons SET NOT NULL;
+        ALTER TABLE outage_reports DROP COLUMN reason;
+      END IF;
+    END $$;
+        `);
         await pool.query(
             `CREATE INDEX IF NOT EXISTS idx_outage_reports_created_at ON outage_reports (created_at);`
         );

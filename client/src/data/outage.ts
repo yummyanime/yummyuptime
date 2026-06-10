@@ -22,9 +22,15 @@ export interface OutageReasonCount {
     count: number;
 }
 
+export interface OutageReport {
+    time: string;
+    reasons: string[];
+}
+
 export interface OutageData {
     updatedAt: string;
     total: number;
     buckets: OutageBucket[];
     reasons: OutageReasonCount[];
+    reports: OutageReport[];
 }

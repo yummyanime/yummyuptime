@@ -392,8 +392,7 @@ router.post("/outage-reports", async (req, res) => {
                 : null;
 
         await pool.query(
-            `INSERT INTO outage_reports (domain, reason)
-             SELECT $1, reason FROM unnest($2::text[]) AS reason`,
+            `INSERT INTO outage_reports (domain, reasons) VALUES ($1, $2)`,
             [domainValue, validReasons]
         );
 
@@ -412,7 +411,7 @@ router.get("/outage-reports", async (req, res) => {
         const start = end - windowMs;
 
         const { rows } = await pool.query(
-            `SELECT reason, created_at
+            `SELECT reasons, created_at
              FROM outage_reports
              WHERE created_at >= NOW() - $1::interval
              ORDER BY created_at ASC;`,
@@ -428,7 +427,9 @@ router.get("/outage-reports", async (req, res) => {
             const idx = Math.floor((t - start) / OUTAGE_BUCKET_MS);
             if (idx >= 0 && idx < bucketCount) {
                 counts[idx] += 1;
-                reasonCounts[row.reason] = (reasonCounts[row.reason] ?? 0) + 1;
+            }
+            for (const reason of row.reasons) {
+                reasonCounts[reason] = (reasonCounts[reason] ?? 0) + 1;
             }
         }
 
@@ -441,11 +442,19 @@ router.get("/outage-reports", async (req, res) => {
             .map(([reason, count]) => ({ reason, count }))
             .sort((a, b) => b.count - a.count);
 
+        const reports = rows
+            .map((row) => ({
+                time: new Date(row.created_at).toISOString(),
+                reasons: row.reasons,
+            }))
+            .sort((a, b) => new Date(b.time) - new Date(a.time));
+
         res.json({
             updatedAt: new Date(now).toISOString(),
             total: rows.length,
             buckets,
             reasons,
+            reports,
         });
     } catch (err) {
         console.error(err);

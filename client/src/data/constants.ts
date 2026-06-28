@@ -85,6 +85,7 @@ export const cityTranslations: { [key: string]: string } = {
 
 export const PROBE_ERROR_CODE = 900;
 export const SLOW_RESPONSE_MS = 1500;
+export const CHART_SPIKE_MS = 2500;
 export const DOWNTIME_ERROR_CODES = new Set([902, 908]);
 
 export const isProbeNoise = (statusCode: number | null | undefined): boolean =>

@@ -14,6 +14,37 @@ export const INTERNAL_STATUS = {
 
 class MeasurementTimeoutError extends Error {}
 
+const PROBE_ERROR_CODE = 900;
+const DOWNTIME_ERROR_CODES = new Set([
+    INTERNAL_STATUS.TIMEOUT,
+    INTERNAL_STATUS.MEASUREMENT_TIMEOUT,
+]);
+
+const isProbeNoiseCode = (statusCode) =>
+    Number(statusCode) >= PROBE_ERROR_CODE &&
+    !DOWNTIME_ERROR_CODES.has(Number(statusCode));
+
+const GLOBALPING_MEASUREMENTS_URL = "https://api.globalping.io/v1/measurements";
+const CREATE_RETRY_BASE_DELAY = 2000;
+const CREATE_RETRY_MAX_DELAY = 15000;
+const CREATE_RETRY_MAX_WINDOW = 60000;
+
+const createMeasurementWithRetry = async (requestOptions, deadline) => {
+    let attempt = 0;
+    while (true) {
+        const response = await fetch(GLOBALPING_MEASUREMENTS_URL, requestOptions);
+        if (response.ok || response.status < 500) {
+            return response;
+        }
+        const delay = Math.min(CREATE_RETRY_BASE_DELAY * 2 ** attempt, CREATE_RETRY_MAX_DELAY);
+        if (Date.now() + delay >= deadline) {
+            return response;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        attempt += 1;
+    }
+};
+
 const classifyProbeFailure = (rawOutput) => {
     if (typeof rawOutput !== "string" || !rawOutput) {
         return INTERNAL_STATUS.PROBE_FAIL;
@@ -228,6 +259,23 @@ export const aggregateHourlyData = async () => {
     }
 };
 
+const fetchLastSuccessfulHttpLog = async (target, country, city) => {
+    try {
+        const query = `
+            SELECT total_time, download_time, first_byte_time, dns_time, tls_time, tcp_time, server_timing
+            FROM http_logs
+            WHERE domain = $1 AND country = $2 AND city = $3 AND status_code = 200 AND total_time IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+        `;
+        const { rows } = await pool.query(query, [target, country, city]);
+        return rows[0] || null;
+    } catch (err) {
+        console.error("Error fetching last successful log for fallback:", err);
+        return null;
+    }
+};
+
 const saveResultToDb = async (
     id,
     target,
@@ -244,6 +292,19 @@ const saveResultToDb = async (
     tcpTime,
     serverTiming = null
 ) => {
+    if (isProbeNoiseCode(statusCode)) {
+        const lastSuccess = await fetchLastSuccessfulHttpLog(target, country, city);
+        if (lastSuccess) {
+            totalTime = lastSuccess.total_time;
+            downloadTime = lastSuccess.download_time;
+            firstByteTime = lastSuccess.first_byte_time;
+            dnsTime = lastSuccess.dns_time;
+            tlsTime = lastSuccess.tls_time;
+            tcpTime = lastSuccess.tcp_time;
+            serverTiming = lastSuccess.server_timing;
+        }
+    }
+
     let finalTotalTime = totalTime;
 
     if (finalTotalTime === null) {
@@ -278,7 +339,7 @@ const saveResultToDb = async (
     await pool.query(query, values);
 };
 
-const checkAndSaveDomain = async (domain, locations) => {
+const checkAndSaveDomain = async (domain, locations, intervalMs) => {
     const target = domain.name;
     const apiKey = process.env[domain.apiKeyEnv];
     const secretKey = process.env.GLOBALPING_SECRET_KEY;
@@ -323,9 +384,11 @@ const checkAndSaveDomain = async (domain, locations) => {
                 },
             }),
         };
-        const createMeasurementResponse = await fetch(
-            "https://api.globalping.io/v1/measurements",
-            requestOptions
+        const createRetryDeadline =
+            Date.now() + Math.min(Math.floor(intervalMs / 2), CREATE_RETRY_MAX_WINDOW);
+        const createMeasurementResponse = await createMeasurementWithRetry(
+            requestOptions,
+            createRetryDeadline
         );
 
         if (!createMeasurementResponse.ok) {
@@ -355,7 +418,7 @@ const checkAndSaveDomain = async (domain, locations) => {
 
         while (Date.now() - startTime < timeout) {
             const getResultResponse = await fetch(
-                `https://api.globalping.io/v1/measurements/${id}`
+                `${GLOBALPING_MEASUREMENTS_URL}/${id}`
             );
 
             if (!getResultResponse.ok) {
@@ -490,11 +553,11 @@ const checkAndSaveDomain = async (domain, locations) => {
     }
 };
 
-export const httpCheckAndSave = async (locations) => {
+export const httpCheckAndSave = async (locations, intervalMs) => {
     console.log(
         `--- Starting HTTP check cycle at ${new Date().toISOString()} for ${locations.length} locations across ${domains.length} domains ---`
     );
     await Promise.all(
-        domains.map((domain) => checkAndSaveDomain(domain, locations))
+        domains.map((domain) => checkAndSaveDomain(domain, locations, intervalMs))
     );
 };

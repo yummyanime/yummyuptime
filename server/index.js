@@ -45,14 +45,14 @@ app.listen(port, async () => {
     console.log(`Server listening at http://localhost:${port}`);
     await createHttpTable();
 
-    const runChecks = (locations) => {
-        httpCheckAndSave(locations).catch((err) =>
+    const runChecks = (locations, intervalMs) => {
+        httpCheckAndSave(locations, intervalMs).catch((err) =>
             console.error("Check cycle failed:", err)
         );
     };
 
-    runChecks(locationGroups["2min"]);
-    pingCheckAndSave().catch((err) =>
+    runChecks(locationGroups["2min"], 2 * 60 * 1000);
+    pingCheckAndSave(2 * 60 * 1000).catch((err) =>
         console.error("Initial ping check failed:", err)
     );
     aggregateHourlyData().catch((err) =>
@@ -78,9 +78,9 @@ app.listen(port, async () => {
     );
 
     // Scheduled runs
-    setInterval(() => runChecks(locationGroups["2min"]), 2 * 60 * 1000);
-    setInterval(() => runChecks(locationGroups["6min"]), 6 * 60 * 1000);
-    setInterval(() => pingCheckAndSave().catch((err) => console.error("Ping check failed:", err)), 2 * 60 * 1000);
+    setInterval(() => runChecks(locationGroups["2min"], 2 * 60 * 1000), 2 * 60 * 1000);
+    setInterval(() => runChecks(locationGroups["6min"], 6 * 60 * 1000), 6 * 60 * 1000);
+    setInterval(() => pingCheckAndSave(2 * 60 * 1000).catch((err) => console.error("Ping check failed:", err)), 2 * 60 * 1000);
     setInterval(() => lighthouseCheckAndSave().catch((err) => console.error("Lighthouse check failed:", err)), 6 * 60 * 1000);
     setInterval(aggregateHourlyData, 60 * 60 * 1000);
     setInterval(aggregateHourlyPingData, 60 * 60 * 1000);

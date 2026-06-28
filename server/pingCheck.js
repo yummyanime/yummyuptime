@@ -11,6 +11,24 @@ const domains = [
 
 const pingLocation = { country: "RU", city: "Moscow" };
 
+const GLOBALPING_MEASUREMENTS_URL = "https://api.globalping.io/v1/measurements";
+
+const createMeasurementWithRetry = async (requestOptions, deadline) => {
+    let attempt = 0;
+    while (true) {
+        const response = await fetch(GLOBALPING_MEASUREMENTS_URL, requestOptions);
+        if (response.ok || response.status < 500) {
+            return response;
+        }
+        const delay = Math.min(2000 * 2 ** attempt, 15000);
+        if (Date.now() + delay >= deadline) {
+            return response;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        attempt += 1;
+    }
+};
+
 const toNonNegativeNumberOrNull = (value) => {
     if (value === null || value === undefined) {
         return null;
@@ -98,7 +116,7 @@ const savePingResultToDb = async (probeId, domain, country, city, asn, network, 
     await pool.query(query, values);
 };
 
-const pingDomain = async (domain) => {
+const pingDomain = async (domain, intervalMs) => {
     const target = domain.name;
     const apiKey = process.env[domain.apiKeyEnv];
 
@@ -124,9 +142,11 @@ const pingDomain = async (domain) => {
             }),
         };
 
-        const createResponse = await fetch(
-            "https://api.globalping.io/v1/measurements",
-            requestOptions
+        const createRetryDeadline =
+            Date.now() + Math.min(Math.floor(intervalMs / 2), 60000);
+        const createResponse = await createMeasurementWithRetry(
+            requestOptions,
+            createRetryDeadline
         );
 
         if (!createResponse.ok) {
@@ -147,7 +167,7 @@ const pingDomain = async (domain) => {
 
         while (Date.now() - startTime < timeout) {
             const getResultResponse = await fetch(
-                `https://api.globalping.io/v1/measurements/${id}`
+                `${GLOBALPING_MEASUREMENTS_URL}/${id}`
             );
 
             if (!getResultResponse.ok) {
@@ -198,9 +218,9 @@ const pingDomain = async (domain) => {
     }
 };
 
-export const pingCheckAndSave = async () => {
+export const pingCheckAndSave = async (intervalMs) => {
     console.log(
         `--- Starting ping check cycle at ${new Date().toISOString()} for ${domains.length} domains ---`
     );
-    await Promise.all(domains.map((domain) => pingDomain(domain)));
+    await Promise.all(domains.map((domain) => pingDomain(domain, intervalMs)));
 };

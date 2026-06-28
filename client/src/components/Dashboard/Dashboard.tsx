@@ -8,6 +8,7 @@ import { useDataStatus } from "../../context/DataStatusContext.tsx";
 import { useDashboardSettings } from "../../context/DashboardSettingsContext.tsx";
 import CountryChart from "../CountryChart/CountryChart.tsx";
 import Lighthouse from "../Lighthouse/Lighthouse.tsx";
+import { CHART_SPIKE_MS } from "../../data/constants.ts";
 
 interface Log {
     created_at: string;
@@ -201,12 +202,12 @@ const Dashboard = () => {
                     let lastValidLog: Log | null = null;
 
                     const processedLogs = cityLogs.map((log, i) => {
-                        const isHighPing = (log.total_time ?? 0) >= 1500;
+                        const isHighPing = (log.total_time ?? 0) > CHART_SPIKE_MS;
                         let isUnreliable = false;
 
                         if (isHighPing) {
                             const prev = cityLogs[i - 1];
-                            const isPrevHigh = (prev?.total_time ?? 0) >= 1500;
+                            const isPrevHigh = (prev?.total_time ?? 0) > CHART_SPIKE_MS;
 
                             if (!isPrevHigh) {
                                 isUnreliable = true;
@@ -228,7 +229,7 @@ const Dashboard = () => {
                                 };
                             } else {
                                 const firstValid = cityLogs.find(
-                                    (l) => (l.total_time ?? 0) < 1500
+                                    (l) => (l.total_time ?? 0) <= CHART_SPIKE_MS
                                 );
                                 if (firstValid) {
                                     return {

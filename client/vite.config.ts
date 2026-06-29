@@ -26,6 +26,14 @@ export default defineConfig({
                 target: "http://localhost:3000",
                 changeOrigin: true,
             },
+            "/lighthouse-logs": {
+                target: "http://localhost:3000",
+                changeOrigin: true,
+            },
+            "/lighthouse-screenshot": {
+                target: "http://localhost:3000",
+                changeOrigin: true,
+            },
         },
     },
 });

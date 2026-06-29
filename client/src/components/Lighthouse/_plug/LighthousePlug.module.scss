@@ -1,0 +1,179 @@
+@use "../../../main" as *;
+
+.lighthouse {
+    background-color: var(--color-dark-bg-1);
+    border-radius: var(--border-radius-md);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+.summary {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    box-sizing: border-box;
+
+    @media (max-width: 830px) {
+        flex-direction: column;
+    }
+}
+
+.screenshot {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    @media (max-width: 830px) {
+        flex-basis: auto;
+    }
+}
+
+.strategySwitch {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.switchButton {
+    width: 80px;
+    height: 34px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.shot {
+    width: 100%;
+    height: 180px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-md);
+    @include shimmer;
+}
+
+.cards {
+    flex: 1 1 0;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 10px;
+    align-content: start;
+
+    @media (max-width: 700px) {
+        grid-template-columns: repeat(2, minmax(110px, 1fr));
+    }
+
+    @media (max-width: 430px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card {
+    background-color: var(--color-dark-bg-2, rgba(255, 255, 255, 0.03));
+    border-radius: var(--border-radius-md);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cardHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cardLabel {
+    width: 50px;
+    height: 14px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--color-bg);
+}
+
+.cardValue {
+    width: 70%;
+    height: 26px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.06);
+    margin: 0 1rem;
+}
+
+.container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+.tabsWrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+
+    @media (max-width: 830px) {
+        gap: 5px;
+    }
+}
+
+.tab {
+    width: 64px;
+    height: 34px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.chartWrapper {
+    height: 280px;
+    min-height: 200px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+
+    @media (max-width: 500px) {
+        height: 220px;
+    }
+}
+
+.avgWrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.avgLabel {
+    width: 180px;
+    height: 18px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.avgValue {
+    width: 90px;
+    height: 30px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}

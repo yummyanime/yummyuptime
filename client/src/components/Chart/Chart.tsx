@@ -1,6 +1,5 @@
 import { Line } from "react-chartjs-2";
 import { useRef, useEffect, useState, useId } from "react";
-import styles from "./Chart.module.scss";
 import {
     Chart as ChartJS,
     LinearScale,
@@ -66,7 +65,6 @@ export interface ChartProps<TLog extends ChartLog> {
     cityLogs: Record<string, TLog[]>;
     cities: string[];
     timeRange: string;
-    isChartLoading: boolean;
     hideLegend?: boolean;
     getValue: (log: TLog) => number | null | undefined;
     getLabel?: (series: string) => string;
@@ -87,7 +85,6 @@ function Chart<TLog extends ChartLog>({
     cityLogs,
     cities,
     timeRange,
-    isChartLoading,
     hideLegend = false,
     getValue,
     getLabel,
@@ -111,14 +108,9 @@ function Chart<TLog extends ChartLog>({
     useEffect(() => {
         const chart = chartRef.current;
         if (chart) {
-            if (isChartLoading) {
-                chart.canvas.classList.add(styles.chartLoading);
-            } else {
-                chart.canvas.classList.remove(styles.chartLoading);
-            }
             chart.canvas.setAttribute("data-chart-canvas", "");
         }
-    }, [isChartLoading]);
+    }, []);
 
     useEffect(() => {
         const canvas = chartRef.current?.canvas;
@@ -682,7 +674,6 @@ function Chart<TLog extends ChartLog>({
             ref={chartRef as any}
             options={getOptions(timeRange, width) as any}
             data={chartData as any}
-            className={styles.chart}
         />
     );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import LhSummary, { type ScreenshotData } from "./_content/LhSummary/LhSummary.tsx";
 import LhChart from "./_content/LhChart/LhChart.tsx";
+import LighthousePlug from "./_plug/LighthousePlug.tsx";
 import { useDashboardSettings } from "../../context/DashboardSettingsContext.tsx";
 import type { LighthouseLog } from "./lighthouseMetrics.ts";
 import styles from "./Lighthouse.module.scss";
@@ -76,8 +77,11 @@ const Lighthouse: React.FC<LighthouseProps> = ({ domain }) => {
         };
     }, [buildQuery, domain, strategy]);
 
-    // Пока ни одного замера не пришло — блок не показываем, чтобы не мозолил глаза.
-    if (!loading && !hasData && logs.length === 0) {
+    if (loading) {
+        return <LighthousePlug />;
+    }
+
+    if (!hasData && logs.length === 0) {
         return null;
     }
 
@@ -92,11 +96,7 @@ const Lighthouse: React.FC<LighthouseProps> = ({ domain }) => {
 
             <div className={styles.divider} />
 
-            <LhChart
-                logs={logs}
-                timeRange={effectiveTimeRange}
-                isChartLoading={loading}
-            />
+            <LhChart logs={logs} timeRange={effectiveTimeRange} />
         </div>
     );
 };

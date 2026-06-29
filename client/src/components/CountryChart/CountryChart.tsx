@@ -31,7 +31,6 @@ interface LocationGroups {
 
 type CountryChartProps = {
     timeRange: string;
-    isChartLoading: boolean;
     loading: boolean;
 } & (
     | {
@@ -66,7 +65,7 @@ const groupLocationsByCountry = (locations: Location[]) =>
         );
 
 const CountryChart = (props: CountryChartProps) => {
-    const { type, timeRange, isChartLoading, loading } = props;
+    const { type, timeRange, loading } = props;
 
     if (type === "domain") {
         if (loading) {
@@ -117,7 +116,6 @@ const CountryChart = (props: CountryChartProps) => {
                                         props.domainLogs[entry.value]
                                     )}
                                     timeRange={timeRange}
-                                    isChartLoading={isChartLoading}
                                 />
                             ))}
                         </div>
@@ -183,7 +181,6 @@ const CountryChart = (props: CountryChartProps) => {
                                         }
                                         cities={cities}
                                         timeRange={timeRange}
-                                        isChartLoading={isChartLoading}
                                     />
                                 );
                             })}

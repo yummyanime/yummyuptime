@@ -232,7 +232,6 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, pingLogs, timeRa
                         cityLogs={currentData}
                         cities={currentCities}
                         timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        isChartLoading={false}
                         hideLegend
                         {...pingPreset}
                     />
@@ -241,7 +240,6 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, pingLogs, timeRa
                         cityLogs={currentData}
                         cities={currentCities}
                         timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        isChartLoading={false}
                         {...backendMetricPreset}
                     />
                 ) : (
@@ -249,7 +247,6 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, pingLogs, timeRa
                         cityLogs={currentData}
                         cities={currentCities}
                         timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        isChartLoading={false}
                         hideLegend
                         {...httpRequestTimePreset}
                     />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import styles from "./Dashboard.module.scss";
 import Menu from "../Menu/Menu.tsx";
@@ -112,7 +112,6 @@ const Dashboard = () => {
         [domain: string]: CityLogs;
     }>({});
     const [loading, setLoading] = useState(true);
-    const [isChartLoading, setChartLoading] = useState(false);
     const { setStatus } = useDataStatus();
     const {
         timeRange,
@@ -309,22 +308,11 @@ const Dashboard = () => {
         return result;
     }, [rawDomainLogs, hideUnreliable]);
 
-    const isInitialMount = useRef(true);
-
     useEffect(() => {
         setLoading(true);
         setStatus("dashboard", "loading");
         fetchData();
-    }, [domain]);
-
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            return;
-        }
-        setChartLoading(true);
-        fetchData().finally(() => setChartLoading(false));
-    }, [timeRange, dateRange?.from, dateRange?.to]);
+    }, [domain, timeRange, dateRange?.from, dateRange?.to]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -371,7 +359,6 @@ const Dashboard = () => {
                     type="domain"
                     domainLogs={domainLogs}
                     timeRange={effectiveTimeRange}
-                    isChartLoading={isChartLoading}
                     loading={loading}
                 />
             </div>
@@ -399,7 +386,6 @@ const Dashboard = () => {
                 locationGroups={locationGroups}
                 httpLogs={httpLogs}
                 timeRange={effectiveTimeRange}
-                isChartLoading={isChartLoading}
                 loading={loading}
             />
             <Lighthouse domain={domain} />

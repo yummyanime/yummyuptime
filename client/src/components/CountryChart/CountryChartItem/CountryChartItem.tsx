@@ -14,7 +14,6 @@ type CountryChartItemProps = {
     cityLogs: CityLogs;
     cities: string[];
     timeRange: string;
-    isChartLoading: boolean;
 } & (
     | {
           type: "country";
@@ -83,7 +82,7 @@ const DomainItemHeader = ({ domainName }: { domainName: string }) => (
 );
 
 const CountryChartItem = (props: CountryChartItemProps) => {
-    const { cityLogs, cities, timeRange, isChartLoading } = props;
+    const { cityLogs, cities, timeRange } = props;
 
     return (
         <div className={styles.chartCard}>
@@ -103,7 +102,6 @@ const CountryChartItem = (props: CountryChartItemProps) => {
                     cityLogs={cityLogs}
                     cities={cities}
                     timeRange={timeRange}
-                    isChartLoading={isChartLoading}
                     {...httpRequestTimePreset}
                 />
             </div>

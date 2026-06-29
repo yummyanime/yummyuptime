@@ -20,13 +20,12 @@ import styles from "./LhChart.module.scss";
 interface LhChartProps {
     logs: LighthouseLog[];
     timeRange: string;
-    isChartLoading: boolean;
 }
 
 const LAB_SERIES = "Uptime сервис";
 const FIELD_SERIES = "Google";
 
-const LhChart: React.FC<LhChartProps> = ({ logs, timeRange, isChartLoading }) => {
+const LhChart: React.FC<LhChartProps> = ({ logs, timeRange }) => {
     const [activeMetric, setActiveMetric] = useState<LighthouseMetricKey>(
         () =>
             (localStorage.getItem("lighthouseMetric") as LighthouseMetricKey) ||
@@ -99,7 +98,6 @@ const LhChart: React.FC<LhChartProps> = ({ logs, timeRange, isChartLoading }) =>
                     cityLogs={cityLogs}
                     cities={cities}
                     timeRange={timeRange}
-                    isChartLoading={isChartLoading}
                     hideLegend={cities.length < 2}
                     {...preset}
                 />

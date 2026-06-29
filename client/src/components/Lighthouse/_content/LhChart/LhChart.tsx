@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Chart from "../../../Chart/Chart.tsx";
+import LazyMount from "../../../LazyMount/LazyMount.tsx";
 import Button from "../../../Button/Button.tsx";
 import {
     makeLighthousePreset,
@@ -94,13 +95,15 @@ const LhChart: React.FC<LhChartProps> = ({ logs, timeRange }) => {
                 ))}
             </div>
             <div className={styles.chartWrapper}>
-                <Chart
-                    cityLogs={cityLogs}
-                    cities={cities}
-                    timeRange={timeRange}
-                    hideLegend={cities.length < 2}
-                    {...preset}
-                />
+                <LazyMount fill>
+                    <Chart
+                        cityLogs={cityLogs}
+                        cities={cities}
+                        timeRange={timeRange}
+                        hideLegend={cities.length < 2}
+                        {...preset}
+                    />
+                </LazyMount>
             </div>
             <div className={styles.avgWrapper}>
                 <span className={styles.avgLabel}>Среднее {metric.label}</span>

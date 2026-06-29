@@ -1,5 +1,6 @@
 import { countries, domainGroups } from "../../data/constants.ts";
 import ChartPlug from "../Chart/_plug/ChartPlug.tsx";
+import LazyMount from "../LazyMount/LazyMount.tsx";
 import CountryChartItem from "./CountryChartItem/CountryChartItem.tsx";
 import styles from "./CountryChart.module.scss";
 
@@ -107,16 +108,22 @@ const CountryChart = (props: CountryChartProps) => {
                         <h3 className={styles.groupTitle}>{group.title}</h3>
                         <div className={styles.chartsGrid}>
                             {group.entries.map((entry) => (
-                                <CountryChartItem
+                                <LazyMount
                                     key={entry.value}
-                                    type="domain"
-                                    domainName={entry.value}
-                                    cityLogs={props.domainLogs[entry.value]}
-                                    cities={Object.keys(
-                                        props.domainLogs[entry.value]
-                                    )}
-                                    timeRange={timeRange}
-                                />
+                                    placeholder={
+                                        <ChartPlug domainName={entry.value} />
+                                    }
+                                >
+                                    <CountryChartItem
+                                        type="domain"
+                                        domainName={entry.value}
+                                        cityLogs={props.domainLogs[entry.value]}
+                                        cities={Object.keys(
+                                            props.domainLogs[entry.value]
+                                        )}
+                                        timeRange={timeRange}
+                                    />
+                                </LazyMount>
                             ))}
                         </div>
                         {index < visibleGroups.length - 1 && (
@@ -170,18 +177,22 @@ const CountryChart = (props: CountryChartProps) => {
                                     : countryCode;
 
                                 return (
-                                    <CountryChartItem
+                                    <LazyMount
                                         key={countryCode}
-                                        type="country"
-                                        countryCode={countryCode}
-                                        countryName={countryName}
-                                        intervalMinutes={intervalMinutes}
-                                        cityLogs={
-                                            props.httpLogs[countryCode] || {}
-                                        }
-                                        cities={cities}
-                                        timeRange={timeRange}
-                                    />
+                                        placeholder={<ChartPlug />}
+                                    >
+                                        <CountryChartItem
+                                            type="country"
+                                            countryCode={countryCode}
+                                            countryName={countryName}
+                                            intervalMinutes={intervalMinutes}
+                                            cityLogs={
+                                                props.httpLogs[countryCode] || {}
+                                            }
+                                            cities={cities}
+                                            timeRange={timeRange}
+                                        />
+                                    </LazyMount>
                                 );
                             })}
                         </div>

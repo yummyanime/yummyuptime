@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Chart from "../../../Chart/Chart.tsx";
+import LazyMount from "../../../LazyMount/LazyMount.tsx";
 import Button from "../../../Button/Button.tsx";
 import {
     backendMetricPreset,
@@ -227,30 +228,32 @@ const OverviewChart: React.FC<OverviewChartProps> = ({ allLogs, pingLogs, timeRa
                 ))}
             </div>
             <div className={styles.chartWrapper}>
-                {isPingTab ? (
-                    <Chart
-                        cityLogs={currentData}
-                        cities={currentCities}
-                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        hideLegend
-                        {...pingPreset}
-                    />
-                ) : isBackend ? (
-                    <Chart
-                        cityLogs={currentData}
-                        cities={currentCities}
-                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        {...backendMetricPreset}
-                    />
-                ) : (
-                    <Chart
-                        cityLogs={currentData}
-                        cities={currentCities}
-                        timeRange={timeRange === "3hour" ? "hour" : timeRange}
-                        hideLegend
-                        {...httpRequestTimePreset}
-                    />
-                )}
+                <LazyMount fill>
+                    {isPingTab ? (
+                        <Chart
+                            cityLogs={currentData}
+                            cities={currentCities}
+                            timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                            hideLegend
+                            {...pingPreset}
+                        />
+                    ) : isBackend ? (
+                        <Chart
+                            cityLogs={currentData}
+                            cities={currentCities}
+                            timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                            {...backendMetricPreset}
+                        />
+                    ) : (
+                        <Chart
+                            cityLogs={currentData}
+                            cities={currentCities}
+                            timeRange={timeRange === "3hour" ? "hour" : timeRange}
+                            hideLegend
+                            {...httpRequestTimePreset}
+                        />
+                    )}
+                </LazyMount>
             </div>
             <div className={styles.avgWrapper}>
                 {isBackend ? (

@@ -1,3 +1,5 @@
+export const SITE_URL = "https://uptime.yani.tv";
+
 export const countries = [
     { code: "RU", name: "Россия" },
     { code: "UA", name: "Украина" },

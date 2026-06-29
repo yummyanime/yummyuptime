@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Disallow: /logs
+Disallow: /http-logs
+Disallow: /ping-logs
+Disallow: /clear-logs
+Disallow: /ping
+Disallow: /locations
+Disallow: /status-summary
+Disallow: /lighthouse-logs
+Disallow: /lighthouse-screenshot
+Disallow: /outage-reports
+Disallow: /events
+
+Host: https://uptime.yani.tv
+Sitemap: https://uptime.yani.tv/sitemap.xml

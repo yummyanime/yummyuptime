@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import styles from "./Dashboard.module.scss";
 import Menu from "../Menu/Menu.tsx";
@@ -43,11 +43,72 @@ interface LocationGroups {
     [interval: string]: Location[];
 }
 
+const processCityLogs = (cityLogsMap: CityLogs): CityLogs => {
+    const filteredLogs: CityLogs = {};
+    for (const city in cityLogsMap) {
+        const cityLogs = cityLogsMap[city];
+        let lastValidLog: Log | null = null;
+
+        const processedLogs = cityLogs.map((log, i) => {
+            const isHighPing = (log.total_time ?? 0) > CHART_SPIKE_MS;
+            let isUnreliable = false;
+
+            if (isHighPing) {
+                const prev = cityLogs[i - 1];
+                const isPrevHigh = (prev?.total_time ?? 0) > CHART_SPIKE_MS;
+
+                if (!isPrevHigh) {
+                    isUnreliable = true;
+                }
+            }
+
+            if (isUnreliable) {
+                if (lastValidLog) {
+                    return {
+                        ...log,
+                        total_time: lastValidLog.total_time,
+                        download_time: lastValidLog.download_time,
+                        first_byte_time: lastValidLog.first_byte_time,
+                        dns_time: lastValidLog.dns_time,
+                        tls_time: lastValidLog.tls_time,
+                        tcp_time: lastValidLog.tcp_time,
+                        server_timing: lastValidLog.server_timing,
+                        unreliable: true,
+                    };
+                } else {
+                    const firstValid = cityLogs.find(
+                        (l) => (l.total_time ?? 0) <= CHART_SPIKE_MS
+                    );
+                    if (firstValid) {
+                        return {
+                            ...log,
+                            total_time: firstValid.total_time,
+                            download_time: firstValid.download_time,
+                            first_byte_time: firstValid.first_byte_time,
+                            dns_time: firstValid.dns_time,
+                            tls_time: firstValid.tls_time,
+                            tcp_time: firstValid.tcp_time,
+                            server_timing: firstValid.server_timing,
+                            unreliable: true,
+                        };
+                    }
+                }
+            } else if (!isHighPing) {
+                lastValidLog = log;
+            }
+            return log;
+        });
+
+        filteredLogs[city] = processedLogs;
+    }
+    return filteredLogs;
+};
+
 const Dashboard = () => {
     const allowedCountries = ["RU", "UA", "BY"];
-    const [httpLogs, setHttpLogs] = useState<CountryLogs>({});
+    const [rawHttpLogs, setRawHttpLogs] = useState<CountryLogs>({});
     const [locationGroups, setLocationGroups] = useState<LocationGroups>({});
-    const [domainLogs, setDomainLogs] = useState<{
+    const [rawDomainLogs, setRawDomainLogs] = useState<{
         [domain: string]: CityLogs;
     }>({});
     const [loading, setLoading] = useState(true);
@@ -143,13 +204,6 @@ const Dashboard = () => {
                     return acc;
                 }, {} as CountryLogs);
 
-                rawLogs = Object.values(logsData).flatMap(
-                    (countryData: any) =>
-                        Object.values(countryData).flatMap(
-                            (cityData: any) => cityData
-                        )
-                );
-
                 const processedLogsData: CountryLogs = {};
                 for (const countryKey in logsData) {
                     processedLogsData[countryKey] = trimCityLogsByTimeRange(logsData[countryKey]);
@@ -165,7 +219,6 @@ const Dashboard = () => {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data: Log[] = await response.json();
-                rawLogs = data;
 
                 const filteredData = data.filter(
                     (log) =>
@@ -195,97 +248,14 @@ const Dashboard = () => {
                     domainLogsData[domainKey] = trimCityLogsByTimeRange(logsForDomain);
                 }
             }
-            const processCityLogs = (cityLogsMap: CityLogs): CityLogs => {
-                const filteredLogs: CityLogs = {};
-                for (const city in cityLogsMap) {
-                    const cityLogs = cityLogsMap[city];
-                    let lastValidLog: Log | null = null;
 
-                    const processedLogs = cityLogs.map((log, i) => {
-                        const isHighPing = (log.total_time ?? 0) > CHART_SPIKE_MS;
-                        let isUnreliable = false;
-
-                        if (isHighPing) {
-                            const prev = cityLogs[i - 1];
-                            const isPrevHigh = (prev?.total_time ?? 0) > CHART_SPIKE_MS;
-
-                            if (!isPrevHigh) {
-                                isUnreliable = true;
-                            }
-                        }
-
-                        if (isUnreliable) {
-                            if (lastValidLog) {
-                                return {
-                                    ...log,
-                                    total_time: lastValidLog.total_time,
-                                    download_time: lastValidLog.download_time,
-                                    first_byte_time: lastValidLog.first_byte_time,
-                                    dns_time: lastValidLog.dns_time,
-                                    tls_time: lastValidLog.tls_time,
-                                    tcp_time: lastValidLog.tcp_time,
-                                    server_timing: lastValidLog.server_timing,
-                                    unreliable: true,
-                                };
-                            } else {
-                                const firstValid = cityLogs.find(
-                                    (l) => (l.total_time ?? 0) <= CHART_SPIKE_MS
-                                );
-                                if (firstValid) {
-                                    return {
-                                        ...log,
-                                        total_time: firstValid.total_time,
-                                        download_time: firstValid.download_time,
-                                        first_byte_time: firstValid.first_byte_time,
-                                        dns_time: firstValid.dns_time,
-                                        tls_time: firstValid.tls_time,
-                                        tcp_time: firstValid.tcp_time,
-                                        server_timing: firstValid.server_timing,
-                                        unreliable: true,
-                                    };
-                                }
-                            }
-                        } else if (!isHighPing) {
-                            lastValidLog = log;
-                        }
-                        return log;
-                    });
-
-                    filteredLogs[city] = processedLogs;
-                }
-                return filteredLogs;
-            };
-
-            if (hideUnreliable) {
-                if (domain) {
-                    const filteredCountryLogs: CountryLogs = {};
-                    for (const country in logsData) {
-                        filteredCountryLogs[country] = processCityLogs(
-                            logsData[country]
-                        );
-                    }
-                    setHttpLogs(filteredCountryLogs);
-                } else {
-                    const filteredDomainLogs: { [domain: string]: CityLogs } = {};
-                    for (const domainKey in domainLogsData) {
-                        filteredDomainLogs[domainKey] = processCityLogs(
-                            domainLogsData[domainKey]
-                        );
-                    }
-                    setDomainLogs(filteredDomainLogs);
-                }
-            } else {
-                if (domain) {
-                    setHttpLogs(logsData);
-                } else {
-                    setDomainLogs(domainLogsData);
-                }
-            }
             if (domain) {
+                setRawHttpLogs(logsData);
                 rawLogs = Object.values(logsData).flatMap(countryData =>
                     Object.values(countryData).flatMap(cityData => cityData)
                 );
             } else {
+                setRawDomainLogs(domainLogsData);
                 rawLogs = Object.values(domainLogsData).flatMap(domainData =>
                     Object.values(domainData).flatMap(cityData => cityData)
                 );
@@ -309,8 +279,8 @@ const Dashboard = () => {
         } catch (e: any) {
             console.error("Error fetching data:", e);
             if (
-                Object.keys(httpLogs).length > 0 ||
-                Object.keys(domainLogs).length > 0
+                Object.keys(rawHttpLogs).length > 0 ||
+                Object.keys(rawDomainLogs).length > 0
             ) {
                 setStatus("dashboard", "stale");
             } else {
@@ -321,6 +291,26 @@ const Dashboard = () => {
         }
     };
 
+    const httpLogs = useMemo(() => {
+        if (!hideUnreliable) return rawHttpLogs;
+        const result: CountryLogs = {};
+        for (const country in rawHttpLogs) {
+            result[country] = processCityLogs(rawHttpLogs[country]);
+        }
+        return result;
+    }, [rawHttpLogs, hideUnreliable]);
+
+    const domainLogs = useMemo(() => {
+        if (!hideUnreliable) return rawDomainLogs;
+        const result: { [domain: string]: CityLogs } = {};
+        for (const domainKey in rawDomainLogs) {
+            result[domainKey] = processCityLogs(rawDomainLogs[domainKey]);
+        }
+        return result;
+    }, [rawDomainLogs, hideUnreliable]);
+
+    const isInitialMount = useRef(true);
+
     useEffect(() => {
         setLoading(true);
         setStatus("dashboard", "loading");
@@ -328,9 +318,13 @@ const Dashboard = () => {
     }, [domain]);
 
     useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
         setChartLoading(true);
         fetchData().finally(() => setChartLoading(false));
-    }, [timeRange, hideUnreliable, dateRange?.from, dateRange?.to]);
+    }, [timeRange, dateRange?.from, dateRange?.to]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -349,7 +343,7 @@ const Dashboard = () => {
                 handleVisibilityChange
             );
         };
-    }, [domain, timeRange, autoRefresh, hideUnreliable, dateRange?.from, dateRange?.to]);
+    }, [domain, timeRange, autoRefresh, dateRange?.from, dateRange?.to]);
 
     const controls = (
         <div className={styles.controls}>

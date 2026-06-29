@@ -3,6 +3,7 @@ process.env.TZ = "UTC";
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
+import compression from "compression";
 import path from "path";
 import { createHttpTable } from "./db.js";
 import apiRoutes from "./routes.js";
@@ -27,6 +28,8 @@ const __dirname = path.resolve();
 
 const app = express();
 const port = 3000;
+
+app.use(compression());
 
 app.use(express.json());
 

@@ -172,6 +172,25 @@ export const createHttpTable = async () => {
         );
         console.log('Table "outage_reports" created or already exists.');
 
+        const indexStatements = [
+            `CREATE INDEX IF NOT EXISTS idx_http_logs_domain_created_at ON http_logs (domain, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_http_logs_created_at ON http_logs (created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_http_logs_domain_loc_created_at ON http_logs (domain, country, city, created_at DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_http_hourly_logs_domain_created_at ON http_hourly_logs (domain, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_http_hourly_logs_created_at ON http_hourly_logs (created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_ping_logs_domain_created_at ON ping_logs (domain, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_ping_logs_created_at ON ping_logs (created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_ping_hourly_logs_domain_created_at ON ping_hourly_logs (domain, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_ping_hourly_logs_created_at ON ping_hourly_logs (created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_lighthouse_logs_domain_strategy_created_at ON lighthouse_logs (domain, strategy, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_lighthouse_hourly_logs_domain_strategy_created_at ON lighthouse_hourly_logs (domain, strategy, created_at);`,
+        ];
+        for (const statement of indexStatements) {
+            await pool.query(statement);
+        }
+        await pool.query(`ANALYZE http_logs, http_hourly_logs, ping_logs, ping_hourly_logs, lighthouse_logs, lighthouse_hourly_logs;`);
+        console.log("Log table indexes created or already exist.");
+
     } catch (err) {
         console.error("Error creating table", err);
     }

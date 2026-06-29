@@ -1,95 +1,113 @@
+@use "../../../main" as *;
+
 .overviewContainer {
     display: flex;
     background-color: var(--color-dark-bg-1);
     border-radius: var(--border-radius-md);
     box-shadow: var(--box-shadow);
-    margin-bottom: 20px;
+    margin-bottom: 1rem;
     overflow: hidden;
-    min-height: 250px;
-    position: relative;
-
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-        animation: shimmer 1.5s infinite;
-    }
-}
-
-@keyframes shimmer {
-    100% {
-        left: 150%;
-    }
+    height: 250px;
 }
 
 .leftPart {
-    flex: 1;
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    flex: 0 0 40%;
+    border-right: 2px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 1rem;
+    box-sizing: border-box;
+}
 
-    .container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-        height: 100%;
-    }
+.statusBadge {
+    width: 240px;
+    max-width: 100%;
+    height: 40px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
 
-    .statusBadge {
-        width: 250px;
-        height: 50px;
-        background-color: var(--color-bg);
-        border-radius: var(--border-radius-sm);
-    }
+.domainList {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.domainItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.statusCircle {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background-color: var(--color-bg);
+}
+
+.domainLabel {
+    width: 150px;
+    height: 18px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
 }
 
 .rightPart {
-    flex: 1.5;
-
-    .container {
-        display: flex;
-        flex-direction: column;
-        padding: 1rem;
-        height: 100%;
-    }
-
-    .chartWrapper {
-        flex: 1;
-        min-height: 150px;
-        background-color: var(--color-bg);
-        border-radius: var(--border-radius-sm);
-    }
-
-    .avgWrapper {
-        margin-top: 15px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .avgLabel {
-        width: 100px;
-        height: 15px;
-        background-color: var(--color-bg);
-        margin-bottom: 5px;
-        border-radius: var(--border-radius-sm);
-    }
-
-    .avgValue {
-        width: 80px;
-        height: 45px;
-        background-color: var(--color-bg);
-        border-radius: var(--border-radius-sm);
-    }
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 1rem;
+    box-sizing: border-box;
 }
 
-@media (max-width: 992px) {
+.tabsWrapper {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.chartWrapper {
+    flex: 1;
+    min-height: 120px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+.avgWrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.avgLabel {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.avgValue {
+    width: 80px;
+    height: 32px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}
+
+@media (max-width: 830px) {
     .overviewContainer {
         flex-direction: column;
-        min-height: auto;
+        height: auto;
     }
 
     .leftPart {

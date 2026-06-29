@@ -1,6 +1,6 @@
 import styles from "./StatusPlug.module.scss";
 
-import { domains } from "../../../data/constants.ts";
+import { domains, getDomainLabel } from "../../../data/constants.ts";
 
 interface StatusPlugProps {
     domain?: string;
@@ -13,10 +13,8 @@ const StatusPlug: React.FC<StatusPlugProps> = ({ domain }) => {
         <div className={styles.statusContainer}>
             {domainsToRender.map((d) => (
                 <div key={d} className={styles.domainSection}>
-                    <div className={styles.domainName}></div>
-                    <div className={styles.requests}>
-                        <div className={styles.requestBlock}></div>
-                    </div>
+                    <h4>{getDomainLabel(d)}</h4>
+                    <div className={styles.requests}></div>
                 </div>
             ))}
         </div>

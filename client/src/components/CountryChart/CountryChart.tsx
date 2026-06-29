@@ -1,4 +1,4 @@
-import { countries, domains as domainList, domainGroups } from "../../data/constants.ts";
+import { countries, domainGroups } from "../../data/constants.ts";
 import ChartPlug from "../Chart/_plug/ChartPlug.tsx";
 import CountryChartItem from "./CountryChartItem/CountryChartItem.tsx";
 import styles from "./CountryChart.module.scss";
@@ -71,11 +71,24 @@ const CountryChart = (props: CountryChartProps) => {
     if (type === "domain") {
         if (loading) {
             return (
-                <div className={styles.chartsGrid}>
-                    {Array.from({ length: domainList.length }).map((_, i) => (
-                        <ChartPlug key={i} />
+                <>
+                    {domainGroups.map((group, index) => (
+                        <div key={group.title} className={styles.chartGroup}>
+                            <h3 className={styles.groupTitle}>{group.title}</h3>
+                            <div className={styles.chartsGrid}>
+                                {group.domains.map((entry) => (
+                                    <ChartPlug
+                                        key={entry.value}
+                                        domainName={entry.value}
+                                    />
+                                ))}
+                            </div>
+                            {index < domainGroups.length - 1 && (
+                                <hr className={styles.chartDivider} />
+                            )}
+                        </div>
                     ))}
-                </div>
+                </>
             );
         }
 
@@ -118,15 +131,22 @@ const CountryChart = (props: CountryChartProps) => {
     }
 
     if (loading) {
+        const groupCounts = [4, 13];
         return (
-            <div className={styles.chartsGrid}>
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <ChartPlug key={`top-${i}`} />
+            <>
+                {groupCounts.map((count, index) => (
+                    <div key={index} className={styles.chartGroup}>
+                        <div className={styles.chartsGrid}>
+                            {Array.from({ length: count }).map((_, i) => (
+                                <ChartPlug key={`${index}-${i}`} />
+                            ))}
+                        </div>
+                        {index < groupCounts.length - 1 && (
+                            <hr className={styles.chartDivider} />
+                        )}
+                    </div>
                 ))}
-                {Array.from({ length: 13 }).map((_, i) => (
-                    <ChartPlug key={`bottom-${i}`} />
-                ))}
-            </div>
+            </>
         );
     }
 

@@ -1,7 +1,10 @@
+@use "../../../main" as *;
+
 .countryChart {
     background-color: var(--color-dark-bg-1);
     padding: 15px;
     border-radius: var(--border-radius-md);
+    box-shadow: var(--box-shadow);
     display: flex;
     height: 300px;
     flex-direction: column;
@@ -13,6 +16,7 @@
     position: relative;
     margin-bottom: 15px;
 }
+
 .countryHeader {
     display: flex;
     align-items: center;
@@ -32,28 +36,18 @@
     margin-bottom: 15px;
 }
 
+.itemName {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
 .title {
     width: 150px;
     height: 24px;
     background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.08),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
-    }
+    @include shimmer;
 }
 
 .dateRange {
@@ -61,23 +55,7 @@
     height: 20px;
     background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.08),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
-    }
+    @include shimmer;
 }
 
 .chart {
@@ -85,23 +63,7 @@
     height: 200px;
     background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.08),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
-    }
+    @include shimmer;
 }
 
 .legend {
@@ -114,27 +76,5 @@
     height: 18px;
     background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.027),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
-    }
-}
-
-@keyframes shimmer {
-    100% {
-        left: 150%;
-    }
+    @include shimmer;
 }

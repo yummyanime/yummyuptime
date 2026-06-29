@@ -12,6 +12,7 @@ import {
 import "chartjs-adapter-date-fns";
 import { ru } from "date-fns/locale";
 import { REASON_LABELS, type OutageData } from "../../data/outage.ts";
+import ReportChartPlug from "./_plug/ReportChartPlug.tsx";
 import styles from "./ReportChart.module.scss";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, TimeScale, Tooltip);
@@ -82,6 +83,8 @@ const ReportChart: React.FC<ReportChartProps> = ({ data, loading }) => {
         []
     );
 
+    if (loading) return <ReportChartPlug />;
+
     const reasons = data?.reasons ?? [];
 
     return (
@@ -98,11 +101,7 @@ const ReportChart: React.FC<ReportChartProps> = ({ data, loading }) => {
                     )}
                 </div>
                 <div className={styles.chartWrapper}>
-                    {loading ? (
-                        <div className={styles.placeholder}>Загрузка…</div>
-                    ) : (
-                        <Bar data={chartData} options={chartOptions} />
-                    )}
+                    <Bar data={chartData} options={chartOptions} />
                 </div>
             </div>
 

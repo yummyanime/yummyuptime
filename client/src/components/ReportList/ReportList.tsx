@@ -2,6 +2,7 @@ import React from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { REASON_LABELS, type OutageData } from "../../data/outage.ts";
+import ReportListPlug from "./_plug/ReportListPlug.tsx";
 import styles from "./ReportList.module.scss";
 
 interface ReportListProps {
@@ -10,14 +11,14 @@ interface ReportListProps {
 }
 
 const ReportList: React.FC<ReportListProps> = ({ data, loading }) => {
+    if (loading) return <ReportListPlug />;
+
     const reports = data?.reports ?? [];
 
     return (
         <div className={styles.card}>
             <span className={styles.title}>Последние жалобы за 24 часа</span>
-            {loading ? (
-                <div className={styles.placeholder}>Загрузка…</div>
-            ) : reports.length === 0 ? (
+            {reports.length === 0 ? (
                 <div className={styles.empty}>
                     За последние 24 часа жалоб не поступало
                 </div>

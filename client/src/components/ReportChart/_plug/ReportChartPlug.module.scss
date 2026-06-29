@@ -1,3 +1,5 @@
+@use "../../../main" as *;
+
 .grid {
     display: grid;
     grid-template-columns: 1fr 320px;
@@ -29,17 +31,11 @@
     color: #ddd;
 }
 
-.totalBadge {
-    font-size: 0.85rem;
-    color: #aaa;
-    background-color: var(--color-dark-bg-2);
-    padding: 0.2rem 0.6rem;
-    border-radius: var(--border-radius-sm);
-}
-
 .chartWrapper {
-    position: relative;
     height: 300px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
 }
 
 .reasonsCard {
@@ -53,37 +49,15 @@
     margin-bottom: 0.75rem;
 }
 
-.noReasons {
-    color: #888;
-    font-size: 0.9rem;
-    padding: 1rem 0;
-}
-
 .reasonsList {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
 .reasonItem {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--color-dark-bg-2);
+    height: 44px;
+    background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    padding: 0.6rem 0.8rem;
-}
-
-.reasonName {
-    color: #eee;
-}
-
-.reasonCount {
-    font-weight: 700;
-    color: var(--color-primary);
-    min-width: 2rem;
-    text-align: right;
+    @include shimmer;
 }

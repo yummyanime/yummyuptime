@@ -1,3 +1,5 @@
+@use "../../../main" as *;
+
 .statusContainer {
     box-shadow: var(--box-shadow);
     display: flex;
@@ -7,14 +9,6 @@
     background-color: var(--color-dark-bg-1);
     border-radius: var(--border-radius-md);
     margin-bottom: 1rem;
-    position: relative;
-    overflow: hidden;
-}
-
-@keyframes shimmer {
-    100% {
-        left: 150%;
-    }
 }
 
 .domainSection {
@@ -23,34 +17,13 @@
     align-items: center;
     gap: 1rem;
 
+    h4 {
+        margin: 0;
+    }
+
     @media (max-width: 500px) {
         grid-template-columns: 1fr;
-        justify-items: center;
-    }
-}
-
-.domainName {
-    height: 24px;
-    width: 150px;
-    background-color: var(--color-bg);
-    border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
-
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.08),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
+        text-align: center;
     }
 }
 
@@ -58,27 +31,10 @@
     height: 20px;
     background-color: var(--color-bg);
     border-radius: var(--border-radius-sm);
-    position: relative;
-    overflow: hidden;
     flex-grow: 1;
+    @include shimmer;
 
     @media (max-width: 500px) {
-        width: 100%; 
-    }
-
-    &::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -150%;
-        width: 150%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.08),
-            transparent
-        );
-        animation: shimmer 1.5s infinite;
+        width: 100%;
     }
 }

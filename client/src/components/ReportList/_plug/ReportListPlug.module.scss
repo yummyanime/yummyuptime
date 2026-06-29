@@ -1,0 +1,30 @@
+@use "../../../main" as *;
+
+.card {
+    background-color: var(--color-dark-bg-1);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--box-shadow);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    font-weight: 600;
+    color: #ddd;
+    margin-bottom: 0.75rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.item {
+    height: 44px;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-sm);
+    @include shimmer;
+}

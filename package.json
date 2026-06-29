@@ -22,7 +22,6 @@
         "chartjs-adapter-date-fns": "^3.0.0",
         "chartjs-plugin-crosshair": "^2.0.0",
         "classnames": "^2.5.1",
-        "compression": "^1.8.1",
         "concurrently": "^9.2.1",
         "date-fns": "^4.1.0",
         "dotenv": "^17.2.1",
